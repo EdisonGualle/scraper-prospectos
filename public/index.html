@@ -275,6 +275,15 @@
 
             <button
               type="button"
+              onclick="abrirModalContactados()"
+              class="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-300 shadow-xs flex items-center space-x-1.5 transition-colors"
+            >
+              <i class="fa-solid fa-address-book text-blue-600"></i>
+              <span>Contactados (<span id="countContactadosHeader">0</span>)</span>
+            </button>
+
+            <button
+              type="button"
               id="btnWaStart"
               onclick="iniciarCampanaWhatsApp()"
               class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center space-x-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -307,7 +316,7 @@
           </div>
         </div>
 
-        <!-- Personalizador de Mensaje y Archivo Adjunto -->
+        <!-- Personalizador de Mensaje y Archivos Adjuntos -->
         <div class="mt-4 pt-3 border-t border-emerald-200/80">
           <div class="flex items-center justify-between mb-2">
             <button
@@ -316,11 +325,11 @@
               class="inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-900 hover:text-emerald-700 transition-colors"
             >
               <i class="fa-solid fa-pen-to-square text-emerald-600"></i>
-              <span>Personalizar Mensaje y Adjuntar Archivo (PDF / Imagen)</span>
+              <span>Personalizar Mensajes y Adjuntar Imágenes / PDFs</span>
               <i id="chevronConfigMsg" class="fa-solid fa-chevron-down text-[10px] ml-1 transition-transform"></i>
             </button>
-            <span id="tagAdjuntoActivo" class="hidden text-[11px] font-semibold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-md">
-              <i class="fa-solid fa-paperclip mr-1"></i> <span id="lblAdjuntoNombre"></span>
+            <span id="tagAdjuntoActivo" class="hidden text-[11px] font-semibold bg-emerald-200 text-emerald-900 px-2.5 py-0.5 rounded-md">
+              <i class="fa-solid fa-paperclip mr-1"></i> <span id="lblAdjuntosTotalBadge">0 adjuntos</span>
             </span>
           </div>
 
@@ -357,22 +366,29 @@
               <!-- Rellenado dinámicamente con JS -->
             </div>
 
-            <!-- Selector de Archivo Adjunto -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white/80 p-3 rounded-xl border border-emerald-200 shadow-xs">
-              <div class="flex items-center space-x-2">
-                <label class="cursor-pointer px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors">
-                  <i class="fa-solid fa-file-arrow-up"></i>
-                  <span>Seleccionar Archivo (PDF / Imagen)</span>
-                  <input type="file" id="fileAdjuntoInput" onchange="subirArchivoAdjunto(this)" accept=".pdf,.png,.jpg,.jpeg,.docx" class="hidden" />
-                </label>
-                <span id="statusUploadAdjunto" class="text-xs text-slate-600">Ningún archivo adjuntado</span>
+            <!-- Selector y Galería de Archivos Múltiples (Imágenes / Flyers / PDFs) -->
+            <div class="bg-white/90 p-3 rounded-xl border border-emerald-200 shadow-xs space-y-2">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="flex items-center space-x-2">
+                  <label class="cursor-pointer px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-xs">
+                    <i class="fa-solid fa-images"></i>
+                    <span>Seleccionar Imágenes o PDFs</span>
+                    <input type="file" id="fileAdjuntoInput" multiple onchange="subirArchivosAdjuntos(this)" accept=".pdf,.png,.jpg,.jpeg,.webp" class="hidden" />
+                  </label>
+                  <span id="statusUploadAdjunto" class="text-xs text-slate-600">Ningún archivo adjuntado</span>
+                </div>
+
+                <div id="btnQuitarAdjuntoContainer" class="hidden">
+                  <button type="button" onclick="limpiarTodosLosAdjuntos()" class="text-xs text-red-600 hover:text-red-700 font-medium flex items-center space-x-1">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>Quitar todos los archivos</span>
+                  </button>
+                </div>
               </div>
 
-              <div id="btnQuitarAdjuntoContainer" class="hidden">
-                <button type="button" onclick="quitarArchivoAdjunto()" class="text-xs text-red-600 hover:text-red-700 font-medium flex items-center space-x-1">
-                  <i class="fa-solid fa-trash-can"></i>
-                  <span>Quitar archivo</span>
-                </button>
+              <!-- Contenedor de miniaturas / chips de archivos adjuntados -->
+              <div id="listaAdjuntosContainer" class="flex flex-wrap items-center gap-2 pt-1">
+                <!-- Chips de archivos renderizados dinámicamente -->
               </div>
             </div>
 
@@ -915,6 +931,7 @@
         btnStart.classList.remove('hidden');
         btnPause.classList.add('hidden');
         progressContainer.classList.add('hidden');
+        ocultarModalQr();
       } else {
         badge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-700';
         badge.innerHTML = '<i class="fa-solid fa-circle text-[8px] mr-1.5 text-slate-500"></i> Desconectado';
@@ -924,17 +941,31 @@
         btnStart.classList.remove('hidden');
         btnPause.classList.add('hidden');
         progressContainer.classList.add('hidden');
+
+        // Si hay QR disponible y el modal está abierto, mostrar el QR
+        if (waEstado.qrCode) {
+          actualizarImagenQr(waEstado.qrCode);
+        }
       }
+
+      const totalContactados = contactadosTelefonos.size;
+      const countHeader = document.getElementById('countContactadosHeader');
+      if (countHeader) countHeader.textContent = totalContactados;
+      const countModal = document.getElementById('lblTotalContactadosModal');
+      if (countModal) countModal.textContent = totalContactados;
     }
 
     async function conectarWhatsApp() {
       const btn = document.getElementById('btnWaConnect');
       btn.disabled = true;
       btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-emerald-600"></i><span>Abriendo WhatsApp...</span>';
+      
+      // Abrir modal de inmediato para que el usuario no tenga que esperar ni buscar ninguna ventana
+      abrirModalQr();
+
       try {
         const res = await fetch('/api/whatsapp/conectar', { method: 'POST' });
         const data = await res.json();
-        alert(data.mensaje || 'Se ha abierto la ventana de WhatsApp Web.');
       } catch (err) {
         alert('Error al conectar WhatsApp: ' + err.message);
       } finally {
@@ -942,15 +973,60 @@
       }
     }
 
-    let rutaAdjuntoActual = null;
-    let nombreAdjuntoActual = null;
+    // Modal Código QR WhatsApp
+    function abrirModalQr() {
+      const modal = document.getElementById('modalQrWhatsApp');
+      const img = document.getElementById('imgQrCode');
+      const spinner = document.getElementById('qrLoadingSpinner');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      img.classList.add('hidden');
+      spinner.classList.remove('hidden');
+    }
+
+    function actualizarImagenQr(base64) {
+      const img = document.getElementById('imgQrCode');
+      const spinner = document.getElementById('qrLoadingSpinner');
+      if (!img) return;
+      img.src = base64;
+      img.classList.remove('hidden');
+      if (spinner) spinner.classList.add('hidden');
+    }
+
+    function ocultarModalQr() {
+      const modal = document.getElementById('modalQrWhatsApp');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // Archivos adjuntos múltiples (Imágenes / Flyers / PDFs)
+    let archivosAdjuntos = [];
     let ultimoTextareaEnfocado = null;
 
-    let plantillasMensajes = [
-      "Hola estimad@s de *{nombre}*, un gusto saludarles 👋. Vimos que abrieron recientemente en {sector}. Les escribimos porque somos especialistas en Facturación Electrónica para el SRI 2026, ideal para micro y pequeños negocios. Les comparto nuestra propuesta para que puedan facturar desde el celular o computador sin complicarse. ¿Les gustaría ver una demo de 2 minutos?",
-      "Buenas tardes amigos de *{nombre}* 👋. Qué gusto encontrar su local en {sector}. ¿Cómo están gestionando sus facturas electrónicas para el SRI este 2026? Tenemos un sistema súper sencillo y económico diseñado para nuevos comercios. Les adjunto nuestra información. ¿Con quién podríamos coordinar una prueba?",
-      "Saludos cordiales al equipo de *{nombre}* 👋. Esperamos que sus ventas en {sector} marchen excelente. Les escribo para presentarles nuestro software de facturación electrónica autorizado por el SRI, fácil y rápido para mostrador y celular. Les dejo la información adjunta. ¿Me permiten 2 minutos para mostrarles cómo funciona?"
+    // 3 Plantillas oficiales de CodeCima solicitadas por el usuario
+    const PLANTILLAS_CODECIMA_DEFAULT = [
+      "Hola estimad@ {nombre}, un gusto saludarles 👋. Les escribimos de parte de CodeCima. Contamos con una solución de Facturación Electrónica para el SRI, pensada para micro y pequeños negocios. Pueden facturar fácilmente desde celular o computadora, sin procesos complicados. ¿Les gustaría conocerla en una demo rápida de 2 minutos?",
+      "Hola {nombre} 👋. En CodeCima estamos ayudando a negocios a simplificar su facturación electrónica y reducir el tiempo que dedican a emitir comprobantes. Nuestro sistema funciona desde cualquier dispositivo y está pensado para ser sencillo de utilizar. Si gustan, podemos mostrarles cómo funciona en una demo breve y sin compromiso. ¿Les interesa?",
+      "Hola {nombre}, esperamos que se encuentren muy bien 👋. Actualmente en CodeCima estamos incorporando negocios a nuestro programa piloto de facturación electrónica. La plataforma permite emitir y gestionar comprobantes electrónicos de manera rápida desde celular o computadora. Tenemos cupos disponibles para probar el sistema. ¿Les gustaría recibir más información?"
     ];
+
+    let plantillasMensajes = [...PLANTILLAS_CODECIMA_DEFAULT];
+
+    // Cargar plantillas desde localStorage si existen
+    try {
+      const guardadas = localStorage.getItem('codecima_plantillas_v2');
+      if (guardadas) {
+        const parsed = JSON.parse(guardadas);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          plantillasMensajes = parsed;
+        }
+      }
+    } catch {}
+
+    function guardarPlantillasEnStorage() {
+      try {
+        localStorage.setItem('codecima_plantillas_v2', JSON.stringify(plantillasMensajes));
+      } catch {}
+    }
 
     function toggleConfiguracionMensaje() {
       const panel = document.getElementById('configMensajePanel');
@@ -991,10 +1067,10 @@
             ${btnEliminarHtml}
           </div>
           <textarea
-            rows="2"
+            rows="3"
             onfocus="ultimoTextareaEnfocado = this"
             oninput="actualizarPlantilla(${idx}, this.value)"
-            class="w-full p-2.5 text-xs bg-slate-50 focus:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 resize-y"
+            class="w-full p-2.5 text-xs bg-slate-50 focus:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 resize-y leading-relaxed"
             placeholder="Escribe el mensaje para esta variación..."
           >${escapeHtml(texto)}</textarea>
         `;
@@ -1002,12 +1078,13 @@
         contenedor.appendChild(item);
       });
 
+      guardarPlantillasEnStorage();
       actualizarPreviewMensaje();
     }
 
     function agregarVariacion() {
       plantillasMensajes.push(
-        "Buenas tardes estimad@s de *{nombre}*, un gusto saludarles. Vimos su negocio en {sector}. ¿Cómo están emitiendo sus comprobantes para el SRI este 2026? Tenemos una solución ágil para celular y PC. Les adjunto nuestra propuesta."
+        "Hola {nombre} 👋, un gusto saludarles. Les escribimos de CodeCima. Tenemos soluciones de Facturación Electrónica para negocios en su sector. ¿Les gustaría probar una demo rápida?"
       );
       renderizarContenedorPlantillas();
     }
@@ -1021,6 +1098,7 @@
     function actualizarPlantilla(idx, valor) {
       if (idx >= 0 && idx < plantillasMensajes.length) {
         plantillasMensajes[idx] = valor;
+        guardarPlantillasEnStorage();
         actualizarPreviewMensaje();
       }
     }
@@ -1054,73 +1132,116 @@
       }
 
       const muestra = validas[0]
-        .replace(/\{nombre\}/gi, 'Bazar Dannita')
-        .replace(/\{sector\}/gi, 'Carapungo')
-        .replace(/\{categoria\}/gi, 'Papelería');
+        .replace(/\{nombre\}/gi, 'Bazar San José')
+        .replace(/\{sector\}/gi, 'Centro')
+        .replace(/\{categoria\}/gi, 'Tienda');
 
-      preview.textContent = `"${muestra}" (${validas.length} plantilla(s) rotando)`;
+      preview.textContent = `"${muestra}" (${validas.length} plantilla(s) de CodeCima)`;
     }
 
-    async function subirArchivoAdjunto(input) {
+    // Subida múltiple de archivos adjuntos (Imágenes, flyers, PDFs)
+    async function subirArchivosAdjuntos(input) {
       if (!input.files || input.files.length === 0) return;
-      const file = input.files[0];
-
-      const statusEl = document.getElementById('statusUploadAdjunto');
-      statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-emerald-600 mr-1"></i> Subiendo ${file.name}...`;
 
       const formData = new FormData();
-      formData.append('archivo', file);
+      for (let i = 0; i < input.files.length; i++) {
+        formData.append('archivos', input.files[i]);
+      }
+
+      const statusEl = document.getElementById('statusUploadAdjunto');
+      statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-emerald-600 mr-1"></i> Subiendo ${input.files.length} archivo(s)...`;
 
       try {
-        const res = await fetch('/api/whatsapp/subir-adjunto', {
+        const res = await fetch('/api/whatsapp/subir-adjuntos', {
           method: 'POST',
           body: formData,
         });
 
         if (!res.ok) {
           const err = await res.json();
-          throw new Error(err.message || 'Error al subir archivo');
+          throw new Error(err.message || 'Error al subir archivos');
         }
 
         const data = await res.json();
-        rutaAdjuntoActual = data.rutaArchivo;
-        nombreAdjuntoActual = data.nombreOriginal;
-
-        statusEl.innerHTML = `<span class="text-emerald-700 font-semibold"><i class="fa-solid fa-check mr-1"></i> ${data.nombreOriginal}</span>`;
-        document.getElementById('btnQuitarAdjuntoContainer').classList.remove('hidden');
-        
-        const tag = document.getElementById('tagAdjuntoActivo');
-        tag.classList.remove('hidden');
-        document.getElementById('lblAdjuntoNombre').textContent = data.nombreOriginal;
+        if (data.archivos && Array.isArray(data.archivos)) {
+          archivosAdjuntos = archivosAdjuntos.concat(data.archivos);
+        }
+        renderizarListaAdjuntos();
       } catch (err) {
-        alert('Error al subir archivo: ' + err.message);
-        quitarArchivoAdjunto();
+        alert('Error al subir archivos: ' + err.message);
+      } finally {
+        input.value = '';
       }
     }
 
-    function quitarArchivoAdjunto() {
-      rutaAdjuntoActual = null;
-      nombreAdjuntoActual = null;
-      document.getElementById('fileAdjuntoInput').value = '';
-      document.getElementById('statusUploadAdjunto').textContent = 'Ningún archivo adjuntado';
-      document.getElementById('btnQuitarAdjuntoContainer').classList.add('hidden');
-      document.getElementById('tagAdjuntoActivo').classList.add('hidden');
+    function renderizarListaAdjuntos() {
+      const contenedor = document.getElementById('listaAdjuntosContainer');
+      const statusEl = document.getElementById('statusUploadAdjunto');
+      const btnLimpiar = document.getElementById('btnQuitarAdjuntoContainer');
+      const tagBadge = document.getElementById('tagAdjuntoActivo');
+      const lblBadge = document.getElementById('lblAdjuntosTotalBadge');
+      if (!contenedor) return;
+
+      contenedor.innerHTML = '';
+
+      if (archivosAdjuntos.length === 0) {
+        statusEl.textContent = 'Ningún archivo adjuntado';
+        btnLimpiar.classList.add('hidden');
+        if (tagBadge) tagBadge.classList.add('hidden');
+        return;
+      }
+
+      statusEl.innerHTML = `<span class="text-emerald-800 font-bold">${archivosAdjuntos.length} archivo(s) listos para enviar</span>`;
+      btnLimpiar.classList.remove('hidden');
+
+      if (tagBadge && lblBadge) {
+        tagBadge.classList.remove('hidden');
+        lblBadge.textContent = `${archivosAdjuntos.length} adjunto(s)`;
+      }
+
+      archivosAdjuntos.forEach((adj, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'inline-flex items-center space-x-1.5 px-2.5 py-1 bg-white border border-emerald-300 rounded-lg text-xs text-emerald-900 shadow-2xs';
+        const esPdf = adj.nombreOriginal.toLowerCase().endsWith('.pdf');
+        const icono = esPdf ? 'fa-file-pdf text-red-500' : 'fa-image text-blue-500';
+        const tamKb = Math.round(adj.tamano / 1024);
+
+        chip.innerHTML = `
+          <i class="fa-solid ${icono} text-xs"></i>
+          <span class="max-w-[140px] truncate font-medium" title="${escapeHtml(adj.nombreOriginal)}">${escapeHtml(adj.nombreOriginal)}</span>
+          <span class="text-[10px] text-slate-400 font-mono">(${tamKb}KB)</span>
+          <button type="button" onclick="quitarAdjuntoIndividual(${idx})" title="Quitar archivo" class="text-slate-400 hover:text-red-500 ml-1 p-0.5"><i class="fa-solid fa-xmark"></i></button>
+        `;
+        contenedor.appendChild(chip);
+      });
+    }
+
+    function quitarAdjuntoIndividual(idx) {
+      archivosAdjuntos.splice(idx, 1);
+      renderizarListaAdjuntos();
+    }
+
+    function limpiarTodosLosAdjuntos() {
+      archivosAdjuntos = [];
+      renderizarListaAdjuntos();
     }
 
     async function iniciarCampanaWhatsApp() {
       if (!prospectosActuales || prospectosActuales.length === 0) {
-        alert('Primero debes realizar una búsqueda y tener prospectos cargados.');
+        alert('Primero debes realizar una búsqueda y tener prospectos calificados.');
         return;
       }
 
       if (!waEstado.conectado) {
         alert('Primero debes conectar WhatsApp Web y escanear el código QR.');
+        abrirModalQr();
         return;
       }
 
       const plantillasValidas = plantillasMensajes.map(t => t.trim()).filter(t => t.length > 0);
+      const rutasAdjuntos = archivosAdjuntos.map(a => a.rutaArchivo);
 
-      const confirmacion = confirm(`¿Deseas iniciar el envío automático a ${prospectosActuales.length} prospectos con pausas humanas de 20s a 45s (Tope máximo de 60 hoy)?\n\n🎲 Rotando entre ${plantillasValidas.length} variaciones de mensaje.${rutaAdjuntoActual ? '\n📎 Incluye archivo adjunto: ' + nombreAdjuntoActual : ''}`);
+      const confirmacion = confirm(`¿Deseas iniciar el envío automático a ${prospectosActuales.length} prospectos con pausas humanas de 20s a 45s (Tope máximo de 60 hoy)?\n\n🎲 Rotando entre ${plantillasValidas.length} variaciones de CodeCima.${rutasAdjuntos.length > 0 ? `\n📎 Adjuntando ${rutasAdjuntos.length} imagen(es)/archivo(s) por cada mensaje.` : ''}`);
       if (!confirmacion) return;
 
       try {
@@ -1130,7 +1251,7 @@
           body: JSON.stringify({
             prospectos: prospectosActuales,
             plantillas: plantillasValidas,
-            archivoAdjuntoPath: rutaAdjuntoActual,
+            archivosAdjuntosPaths: rutasAdjuntos,
           }),
         });
         const data = await res.json();
@@ -1152,6 +1273,83 @@
       }
     }
 
+    // Modal de Contactados
+    function abrirModalContactados() {
+      const modal = document.getElementById('modalContactados');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      cargarListaContactadosModal();
+    }
+
+    function cerrarModalContactados() {
+      const modal = document.getElementById('modalContactados');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function cargarListaContactadosModal() {
+      const scroll = document.getElementById('listaContactadosScroll');
+      if (!scroll) return;
+      scroll.innerHTML = '<div class="py-2 text-slate-400 text-center"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Cargando...</div>';
+
+      try {
+        const res = await fetch('/api/whatsapp/historial');
+        const lista = await res.json();
+        scroll.innerHTML = '';
+        if (lista.length === 0) {
+          scroll.innerHTML = '<div class="py-4 text-slate-400 text-center italic">Aún no hay clientes contactados en el historial.</div>';
+          return;
+        }
+
+        lista.slice(-50).reverse().forEach(c => {
+          const item = document.createElement('div');
+          item.className = 'py-1.5 flex items-center justify-between text-xs';
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-slate-800">${escapeHtml(c.nombre || 'Comercio')}</span>
+              <span class="text-slate-500 font-mono ml-2">${escapeHtml(c.telefono)}</span>
+            </div>
+            <span class="text-[10px] text-slate-400">${c.fecha ? c.fecha.slice(0, 10) : ''}</span>
+          `;
+          scroll.appendChild(item);
+        });
+      } catch (err) {
+        scroll.innerHTML = '<div class="text-red-500 text-xs py-2">Error al cargar historial.</div>';
+      }
+    }
+
+    async function importarTelefonosManual() {
+      const txt = document.getElementById('txtImportarTelefonos');
+      if (!txt || !txt.value.trim()) {
+        alert('Ingresa al menos un número telefónico.');
+        return;
+      }
+
+      const numeros = txt.value
+        .split(/[\n,;]+/)
+        .map(n => n.replace(/[^\d]/g, '').trim())
+        .filter(n => n.length >= 8);
+
+      if (numeros.length === 0) {
+        alert('No se encontraron números válidos.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/whatsapp/importar-contactados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telefonos: numeros }),
+        });
+        const data = await res.json();
+        alert(`Se importaron ${data.agregados} números nuevos al historial anti-repetición.`);
+        txt.value = '';
+        actualizarHistorialLocal();
+        cargarListaContactadosModal();
+      } catch (err) {
+        alert('Error al importar: ' + err.message);
+      }
+    }
+
     function actualizarBadgesTabla() {
       const tbody = document.getElementById('leadsTableBody');
       if (!tbody) return;
@@ -1169,12 +1367,85 @@
       });
     }
 
-    // Iniciar sondeo de estado, preview y sugerencias al cargar
+    // Iniciar sondeo de estado, preview, sugerencias y plantillas al cargar
     actualizarEstadoWhatsApp();
-    setInterval(actualizarEstadoWhatsApp, 3000);
+    setInterval(actualizarEstadoWhatsApp, 2500);
     renderizarSugerencias();
-    document.getElementById('txtMensajePersonalizado')?.addEventListener('input', actualizarPreviewMensaje);
-    actualizarPreviewMensaje();
+    renderizarContenedorPlantillas();
   </script>
+
+  <!-- Modal Código QR de WhatsApp Web -->
+  <div id="modalQrWhatsApp" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+    <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-200 text-center relative">
+      <button type="button" onclick="ocultarModalQr()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-2 text-2xl">
+        <i class="fa-brands fa-whatsapp"></i>
+      </div>
+      <h3 class="text-base font-extrabold text-slate-900">Vincular WhatsApp Web</h3>
+      <p class="text-xs text-slate-500 mt-0.5 max-w-xs mx-auto">
+        Escanea este código con tu celular para enviar desde tu cuenta de WhatsApp.
+      </p>
+
+      <!-- Contenedor del QR -->
+      <div class="my-4 p-3 bg-slate-50 rounded-2xl border border-slate-200 inline-block">
+        <div id="qrLoadingSpinner" class="w-56 h-56 flex flex-col items-center justify-center text-slate-400 text-xs">
+          <i class="fa-solid fa-circle-notch fa-spin text-3xl text-emerald-600 mb-2"></i>
+          <span>Cargando código QR de WhatsApp Web...</span>
+        </div>
+        <img id="imgQrCode" src="" alt="Código QR WhatsApp" class="w-56 h-56 object-contain rounded-xl hidden" />
+      </div>
+
+      <div class="space-y-1 text-left bg-emerald-50/70 border border-emerald-200/70 rounded-xl p-3 text-[11px] text-slate-700">
+        <div class="font-bold text-emerald-900 flex items-center gap-1.5 mb-0.5">
+          <i class="fa-solid fa-mobile-screen text-xs"></i> Instrucciones de escaneo:
+        </div>
+        <div>1. Abre <b>WhatsApp</b> en tu teléfono móvil.</div>
+        <div>2. Toca <b>Ajustes</b> (o 3 puntos) > <b>Dispositivos vinculados</b>.</div>
+        <div>3. Toca <b>Vincular un dispositivo</b> y apunta la cámara a este código.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Historial y Gestión de Contactados -->
+  <div id="modalContactados" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+    <div class="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-200 relative text-left">
+      <button type="button" onclick="cerrarModalContactados()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-address-book"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Historial Anti-Repetición</h3>
+          <p class="text-xs text-slate-500">Contactados registrados: <b id="lblTotalContactadosModal">0</b> clientes</p>
+        </div>
+      </div>
+
+      <!-- Importar números manualmente -->
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4 space-y-2">
+        <label class="block text-xs font-bold text-slate-700">
+          <i class="fa-solid fa-file-import mr-1 text-blue-600"></i> Importar números ya contactados previamente:
+        </label>
+        <textarea id="txtImportarTelefonos" rows="3" placeholder="Pega números separados por comas o saltos de línea (ej: 0981234567, 0997654321)..." class="w-full text-xs p-2 bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-blue-500"></textarea>
+        <div class="flex justify-end">
+          <button type="button" onclick="importarTelefonosManual()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs">
+            + Importar al historial
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de últimos contactados -->
+      <div class="space-y-1">
+        <span class="text-xs font-bold text-slate-700">Últimos números contactados:</span>
+        <div id="listaContactadosScroll" class="max-h-40 overflow-y-auto space-y-1 text-xs pr-1 divide-y divide-slate-100">
+          <!-- Renderizado dinámicamente -->
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
