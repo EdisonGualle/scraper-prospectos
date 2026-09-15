@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prospector B2B - Facturación Electrónica</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <!-- Header / Barra Superior -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl shadow-md shadow-blue-500/20">
+          <i class="fa-solid fa-crosshairs"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 leading-tight">Prospector B2B</h1>
+          <p class="text-xs text-slate-500">Captura de clientes potenciales para Facturación Electrónica</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+          <span class="w-1.5 h-1.5 mr-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+          Motor Stealth Activo
+        </span>
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <i class="fa-solid fa-file-excel mr-1"></i> Excel 1-Click
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenido Principal -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+    <!-- Tarjeta de Búsqueda -->
+    <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200">
+      <div class="max-w-3xl">
+        <h2 class="text-xl font-bold text-slate-900 mb-2">Buscar comercios y negocios locales</h2>
+        <p class="text-sm text-slate-500 mb-6">
+          Ingresa el tipo de negocio y la ciudad en Ecuador para extraer teléfonos, WhatsApp y datos de contacto.
+        </p>
+
+        <!-- Formulario -->
+        <form id="searchForm" class="space-y-4" onsubmit="event.preventDefault(); iniciarBusqueda();">
+          <div class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </div>
+              <input
+                type="text"
+                id="queryInput"
+                class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="Ej. ferreterias quito, clinicas dentales guayaquil, restaurantes cuenca..."
+                value="ferreterias quito"
+                required
+              />
+            </div>
+
+            <div class="w-full sm:w-44">
+              <select
+                id="limitInput"
+                class="w-full py-3 px-3.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="10">10 prospectos</option>
+                <option value="20" selected>20 prospectos</option>
+                <option value="30">30 prospectos</option>
+                <option value="50">50 prospectos</option>
+                <option value="100">100 prospectos</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              id="btnSubmit"
+              class="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md shadow-blue-600/20 flex items-center justify-center space-x-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <i class="fa-solid fa-bolt"></i>
+              <span>Buscar Clientes</span>
+            </button>
+          </div>
+
+          <!-- Filtros de Segmentación PyME y WhatsApp -->
+          <div class="flex flex-wrap items-center gap-3 pt-2 text-xs font-medium">
+            <label class="inline-flex items-center space-x-2 cursor-pointer bg-emerald-50 text-emerald-900 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors">
+              <input type="checkbox" id="chkSoloWhatsapp" checked class="w-4 h-4 text-emerald-600 rounded border-emerald-300 focus:ring-emerald-500">
+              <span class="flex items-center space-x-1.5">
+                <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i>
+                <span class="font-semibold">Solo con WhatsApp</span>
+              </span>
+            </label>
+
+            <label class="inline-flex items-center space-x-2 cursor-pointer bg-blue-50 text-blue-900 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
+              <input type="checkbox" id="chkExcluirCadenas" checked class="w-4 h-4 text-blue-600 rounded border-blue-300 focus:ring-blue-500">
+              <span class="flex items-center space-x-1.5">
+                <i class="fa-solid fa-shield-halved text-blue-600"></i>
+                <span class="font-semibold">Excluir grandes cadenas (Tía, etc.)</span>
+              </span>
+            </label>
+
+            <label class="inline-flex items-center space-x-2 cursor-pointer bg-indigo-50 text-indigo-900 px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors">
+              <input type="checkbox" id="chkSolo2026" checked class="w-4 h-4 text-indigo-600 rounded border-indigo-300 focus:ring-indigo-500">
+              <span class="flex items-center space-x-1.5">
+                <i class="fa-solid fa-calendar-check text-indigo-600"></i>
+                <span class="font-semibold">Solo 2026 (Nuevos)</span>
+              </span>
+            </label>
+
+            <!-- Filtro de Madurez para descartar locales consolidados -->
+            <div class="inline-flex items-center space-x-2 bg-purple-50 text-purple-900 px-3 py-1.5 rounded-lg border border-purple-200">
+              <i class="fa-solid fa-store text-purple-600"></i>
+              <span class="font-semibold">Filtro de tamaño:</span>
+              <select id="maturitySelect" class="bg-transparent border-none font-bold text-purple-900 focus:outline-none cursor-pointer">
+                <option value="20" selected>Nuevos y micro-locales (≤ 20 reseñas - Sin Facturador)</option>
+                <option value="40">Pequeños negocios (≤ 40 reseñas)</option>
+                <option value="70">Medianos (≤ 70 reseñas)</option>
+                <option value="9999">Cualquier tamaño</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Sugerencias rápidas (Chips Dinámicos >100 de Tiendas en Puyo, Riobamba, Ambato, Tena) -->
+          <div class="pt-3 border-t border-slate-100">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <i class="fa-solid fa-store text-blue-600"></i> Sugerencias de Tiendas (120):
+                </span>
+                <!-- Filtros por Ciudad -->
+                <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs font-medium text-slate-600" id="tabsCiudadSugerencias">
+                  <button type="button" onclick="filtrarSugerencias('todas')" data-ciudad="todas" class="tab-ciudad-btn px-2.5 py-1 rounded-md transition-all font-semibold bg-white text-blue-600 shadow-sm">Todas (120)</button>
+                  <button type="button" onclick="filtrarSugerencias('puyo')" data-ciudad="puyo" class="tab-ciudad-btn px-2.5 py-1 rounded-md transition-all hover:text-slate-900">🌿 Puyo (30)</button>
+                  <button type="button" onclick="filtrarSugerencias('riobamba')" data-ciudad="riobamba" class="tab-ciudad-btn px-2.5 py-1 rounded-md transition-all hover:text-slate-900">🏔️ Riobamba (30)</button>
+                  <button type="button" onclick="filtrarSugerencias('ambato')" data-ciudad="ambato" class="tab-ciudad-btn px-2.5 py-1 rounded-md transition-all hover:text-slate-900">🍓 Ambato (30)</button>
+                  <button type="button" onclick="filtrarSugerencias('tena')" data-ciudad="tena" class="tab-ciudad-btn px-2.5 py-1 rounded-md transition-all hover:text-slate-900">🌴 Tena (30)</button>
+                </div>
+              </div>
+
+              <!-- Mini buscador de sugerencias -->
+              <div class="relative min-w-[210px]">
+                <input type="text" id="filtroTextoSugerencias" oninput="filtrarSugerenciasPorTexto(this.value)" placeholder="Filtrar tienda ej. abarrotes, ropa..." class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg pl-7 pr-2 py-1 focus:ring-1 focus:ring-blue-500 outline-none" />
+                <i class="fa-solid fa-search absolute left-2.5 top-2 text-[10px] text-slate-400"></i>
+              </div>
+            </div>
+
+            <!-- Contenedor de Chips dinámicos -->
+            <div id="contenedorSugerencias" class="flex flex-wrap items-center gap-1.5 max-h-32 overflow-y-auto pr-1 py-1 transition-all">
+              <!-- Rellenado dinámicamente con JS -->
+            </div>
+
+            <div class="flex items-center justify-between mt-1.5 text-[11px] text-slate-400">
+              <span id="contadorSugerenciasVisibles">Mostrando 120 sugerencias de tiendas</span>
+              <button type="button" onclick="toggleAlturaSugerencias()" id="btnToggleAltura" class="text-blue-600 hover:text-blue-700 font-medium">
+                <i class="fa-solid fa-up-right-and-down-left-from-center mr-1"></i> Expandir lista completa
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Indicador de Carga -->
+    <div id="loadingState" class="hidden bg-white rounded-2xl p-12 border border-slate-200 text-center shadow-sm">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 text-blue-600 mb-4 animate-spin">
+        <i class="fa-solid fa-circle-notch text-2xl"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900 mb-1">Navegando y extrayendo prospectos...</h3>
+      <p class="text-sm text-slate-500 max-w-md mx-auto" id="loadingStatus">
+        Iniciando navegador Chromium en modo sigiloso y cargando Google Maps. Esto tomará entre 10 y 25 segundos.
+      </p>
+      <div class="mt-4 text-xs font-mono text-slate-400" id="timer">Tiempo: 0s</div>
+    </div>
+
+    <!-- Panel de Resultados -->
+    <div id="resultsSection" class="hidden space-y-6">
+
+      <!-- Métricas / KPIs -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div class="bg-white p-4 rounded-xl border border-emerald-200 shadow-sm flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
+            <i class="fa-brands fa-whatsapp"></i>
+          </div>
+          <div>
+            <div class="text-xl font-black text-emerald-600" id="kpiTotal">0</div>
+            <div class="text-[11px] font-medium text-slate-500">PyMEs con WhatsApp</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-blue-200 shadow-sm flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-sparkles"></i>
+          </div>
+          <div>
+            <div class="text-xl font-black text-blue-600" id="kpiNuevos">0</div>
+            <div class="text-[11px] font-medium text-slate-500">Locales Nuevos / Sin ERP</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-purple-200 shadow-sm flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-store-slash"></i>
+          </div>
+          <div>
+            <div class="text-xl font-black text-purple-600" id="kpiDescarteMadurez">0</div>
+            <div class="text-[11px] font-medium text-slate-500">Consolidados Excluidos</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-orange-200 shadow-sm flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <div class="text-xl font-black text-orange-600" id="kpiDescarteCadena">0</div>
+            <div class="text-[11px] font-medium text-slate-500">Cadenas Excluidas</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-phone-slash"></i>
+          </div>
+          <div>
+            <div class="text-xl font-black text-slate-700" id="kpiDescarteSinWa">0</div>
+            <div class="text-[11px] font-medium text-slate-500">Sin WA Descartados</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel de Campaña de WhatsApp Automática con Anti-Baneo -->
+      <div class="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-100 rounded-2xl p-5 border border-emerald-300 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-600 text-white">
+                <i class="fa-brands fa-whatsapp mr-1.5"></i> Campaña Automática
+              </span>
+              <span id="waStatusBadge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-700">
+                <i class="fa-solid fa-circle text-[8px] mr-1.5 text-slate-500"></i> Desconectado
+              </span>
+              <span class="text-xs font-bold text-slate-600 bg-white/80 px-2.5 py-0.5 rounded-lg border border-slate-200">
+                🛡️ Tope: <span id="waSentToday">0</span> / 60 hoy
+              </span>
+            </div>
+            <p id="waStatusMessage" class="text-xs text-emerald-900 font-medium pt-1">
+              Conecta tu WhatsApp Web una sola vez y envía mensajes con intervalo humano aleatorio (20s a 45s).
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="btnWaConnect"
+              onclick="conectarWhatsApp()"
+              class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold rounded-xl border border-slate-300 shadow-sm flex items-center space-x-1.5 transition-colors"
+            >
+              <i class="fa-solid fa-qrcode text-emerald-600"></i>
+              <span>Conectar WhatsApp</span>
+            </button>
+
+            <button
+              type="button"
+              id="btnWaStart"
+              onclick="iniciarCampanaWhatsApp()"
+              class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center space-x-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Iniciar Envíos (Max 60)</span>
+            </button>
+
+            <button
+              type="button"
+              id="btnWaPause"
+              onclick="pausarCampanaWhatsApp()"
+              class="hidden px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-sm flex items-center space-x-1.5 transition-colors"
+            >
+              <i class="fa-solid fa-pause"></i>
+              <span>Pausar</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Barra de Progreso de Envío -->
+        <div id="waProgressContainer" class="hidden mt-3 pt-3 border-t border-emerald-200/70">
+          <div class="flex items-center justify-between text-xs text-emerald-900 font-medium mb-1">
+            <span id="waProgressText">Enviando mensajes...</span>
+            <span id="waCountdown" class="font-mono font-bold text-emerald-800"></span>
+          </div>
+          <div class="w-full bg-emerald-200/60 rounded-full h-2 overflow-hidden">
+            <div id="waProgressBar" class="bg-emerald-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Personalizador de Mensaje y Archivo Adjunto -->
+        <div class="mt-4 pt-3 border-t border-emerald-200/80">
+          <div class="flex items-center justify-between mb-2">
+            <button
+              type="button"
+              onclick="toggleConfiguracionMensaje()"
+              class="inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-900 hover:text-emerald-700 transition-colors"
+            >
+              <i class="fa-solid fa-pen-to-square text-emerald-600"></i>
+              <span>Personalizar Mensaje y Adjuntar Archivo (PDF / Imagen)</span>
+              <i id="chevronConfigMsg" class="fa-solid fa-chevron-down text-[10px] ml-1 transition-transform"></i>
+            </button>
+            <span id="tagAdjuntoActivo" class="hidden text-[11px] font-semibold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-md">
+              <i class="fa-solid fa-paperclip mr-1"></i> <span id="lblAdjuntoNombre"></span>
+            </span>
+          </div>
+
+          <div id="configMensajePanel" class="space-y-4 pt-1">
+            <!-- Barra superior del editor con botones de variables y agregar variación -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-emerald-100/60 p-2.5 rounded-xl border border-emerald-200">
+              <div class="flex items-center space-x-2">
+                <span id="lblTotalVariaciones" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white">
+                  3 Variaciones activas (Rotación 🎲)
+                </span>
+                <span class="text-[11px] text-emerald-800 hidden sm:inline">Rotarán entre los prospectos para evitar detección de spam.</span>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <div class="flex items-center space-x-1 text-[11px]">
+                  <span class="text-slate-500 font-medium">Insertar:</span>
+                  <button type="button" onclick="insertarVariable('{nombre}')" class="px-2 py-0.5 bg-white hover:bg-emerald-50 border border-slate-300 rounded text-emerald-700 font-semibold shadow-xs">+ Nombre</button>
+                  <button type="button" onclick="insertarVariable('{sector}')" class="px-2 py-0.5 bg-white hover:bg-emerald-50 border border-slate-300 rounded text-emerald-700 font-semibold shadow-xs">+ Sector</button>
+                  <button type="button" onclick="insertarVariable('{categoria}')" class="px-2 py-0.5 bg-white hover:bg-emerald-50 border border-slate-300 rounded text-emerald-700 font-semibold shadow-xs">+ Rubro</button>
+                </div>
+                <button
+                  type="button"
+                  onclick="agregarVariacion()"
+                  class="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold flex items-center space-x-1 shadow-xs transition-colors"
+                >
+                  <i class="fa-solid fa-plus text-[10px]"></i>
+                  <span>Añadir Variación</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Contenedor dinámico de variaciones -->
+            <div id="contenedorVariaciones" class="space-y-3">
+              <!-- Rellenado dinámicamente con JS -->
+            </div>
+
+            <!-- Selector de Archivo Adjunto -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white/80 p-3 rounded-xl border border-emerald-200 shadow-xs">
+              <div class="flex items-center space-x-2">
+                <label class="cursor-pointer px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors">
+                  <i class="fa-solid fa-file-arrow-up"></i>
+                  <span>Seleccionar Archivo (PDF / Imagen)</span>
+                  <input type="file" id="fileAdjuntoInput" onchange="subirArchivoAdjunto(this)" accept=".pdf,.png,.jpg,.jpeg,.docx" class="hidden" />
+                </label>
+                <span id="statusUploadAdjunto" class="text-xs text-slate-600">Ningún archivo adjuntado</span>
+              </div>
+
+              <div id="btnQuitarAdjuntoContainer" class="hidden">
+                <button type="button" onclick="quitarArchivoAdjunto()" class="text-xs text-red-600 hover:text-red-700 font-medium flex items-center space-x-1">
+                  <i class="fa-solid fa-trash-can"></i>
+                  <span>Quitar archivo</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Vista previa simulada -->
+            <div class="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200 text-[11px] text-slate-600">
+              <span class="font-bold text-emerald-800">Vista previa aleatoria (Ejemplo): </span>
+              <span id="previewMensaje" class="italic"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de Acciones y Tabla -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center space-x-3">
+            <h3 class="text-base font-bold text-slate-900">Listado de Prospectos PyME</h3>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold" id="tableBadgeCount">0</span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Filtro local -->
+            <div class="relative">
+              <input
+                type="text"
+                id="filterTableInput"
+                oninput="filtrarTabla()"
+                placeholder="Filtrar en tabla..."
+                class="text-xs pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <i class="fa-solid fa-filter absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+            </div>
+
+            <!-- Botón de Descarga Excel -->
+            <button
+              id="btnDownloadExcel"
+              onclick="descargarExcelDirecto()"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center space-x-2 transition-colors"
+            >
+              <i class="fa-solid fa-file-excel text-sm"></i>
+              <span>Descargar Excel (.xlsx)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <th class="py-3 px-4">Negocio</th>
+                <th class="py-3 px-4 text-center">Oportunidad SRI</th>
+                <th class="py-3 px-4">Categoría</th>
+                <th class="py-3 px-4">Teléfono</th>
+                <th class="py-3 px-4 text-center">Contacto WhatsApp</th>
+                <th class="py-3 px-4">Dirección</th>
+                <th class="py-3 px-4 text-center">Reseñas</th>
+                <th class="py-3 px-4 text-center">Enlaces</th>
+                <th class="py-3 px-4 text-center">Estado Envío</th>
+              </tr>
+            </thead>
+            <tbody id="leadsTableBody" class="divide-y divide-slate-100 text-sm">
+              <!-- Rellenado dinámicamente con JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    let prospectosActuales = [];
+    let metricasActuales = {};
+    let ultimaQuery = '';
+    let timerInterval = null;
+
+    // Datos de 120 sugerencias de tiendas por ciudad (Puyo, Riobamba, Ambato, Tena)
+    const SUGERENCIAS_TIENDAS = [
+      // PUYO (30)
+      { ciudad: 'puyo', query: 'tiendas de abarrotes puyo', label: '🛒 Tiendas de abarrotes Puyo' },
+      { ciudad: 'puyo', query: 'minimarkets puyo', label: '🏪 Minimarkets Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de ropa puyo', label: '👗 Tiendas de ropa Puyo' },
+      { ciudad: 'puyo', query: 'bazares puyo', label: '🎁 Bazares Puyo' },
+      { ciudad: 'puyo', query: 'papelerias puyo', label: '📚 Papelerías Puyo' },
+      { ciudad: 'puyo', query: 'zapaterias puyo', label: '👟 Zapaterías Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de calzado puyo', label: '🥾 Tiendas de calzado Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de celulares puyo', label: '📱 Tiendas de celulares Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de tecnologia puyo', label: '💻 Tiendas de tecnología Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de computacion puyo', label: '🖥️ Computación Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de cosmeticos puyo', label: '💄 Cosméticos Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de accesorios y bisuteria puyo', label: '💍 Bisutería Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de mascotas puyo', label: '🐶 Tiendas de mascotas Puyo' },
+      { ciudad: 'puyo', query: 'veterinarias y pet shops puyo', label: '🐾 Pet shops Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de repuestos de motos puyo', label: '🏍️ Repuestos motos Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de repuestos de autos puyo', label: '🚗 Repuestos autos Puyo' },
+      { ciudad: 'puyo', query: 'ferreterias puyo', label: '🔨 Ferreterías Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de pinturas puyo', label: '🎨 Tiendas de pinturas Puyo' },
+      { ciudad: 'puyo', query: 'licorerias puyo', label: '🍾 Licorerías Puyo' },
+      { ciudad: 'puyo', query: 'depositos de bebidas puyo', label: '🍺 Depósitos bebidas Puyo' },
+      { ciudad: 'puyo', query: 'carnicerias puyo', label: '🥩 Carnicerías Puyo' },
+      { ciudad: 'puyo', query: 'panaderias y pastelerias puyo', label: '🥐 Panaderías Puyo' },
+      { ciudad: 'puyo', query: 'tiendas naturistas puyo', label: '🌿 Tiendas naturistas Puyo' },
+      { ciudad: 'puyo', query: 'tiendas deportivas puyo', label: '⚽ Tiendas deportivas Puyo' },
+      { ciudad: 'puyo', query: 'agropecuarias puyo', label: '🌾 Agropecuarias Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de bicicletas puyo', label: '🚲 Tiendas de bicicletas Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de muebles puyo', label: '🛋️ Tiendas de muebles Puyo' },
+      { ciudad: 'puyo', query: 'opticas puyo', label: '👓 Ópticas Puyo' },
+      { ciudad: 'puyo', query: 'joyerias y relojerias puyo', label: '⌚ Joyerías Puyo' },
+      { ciudad: 'puyo', query: 'tiendas de pesca y camping puyo', label: '🎣 Pesca y camping Puyo' },
+
+      // RIOBAMBA (30)
+      { ciudad: 'riobamba', query: 'tiendas de abarrotes riobamba', label: '🛒 Tiendas de abarrotes Riobamba' },
+      { ciudad: 'riobamba', query: 'minimarkets riobamba', label: '🏪 Minimarkets Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de ropa riobamba', label: '👗 Tiendas de ropa Riobamba' },
+      { ciudad: 'riobamba', query: 'bazares riobamba', label: '🎁 Bazares Riobamba' },
+      { ciudad: 'riobamba', query: 'papelerias riobamba', label: '📚 Papelerías Riobamba' },
+      { ciudad: 'riobamba', query: 'zapaterias riobamba', label: '👟 Zapaterías Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de calzado riobamba', label: '🥾 Tiendas de calzado Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de celulares riobamba', label: '📱 Tiendas de celulares Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de tecnologia riobamba', label: '💻 Tiendas de tecnología Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de computacion riobamba', label: '🖥️ Computación Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de cosmeticos riobamba', label: '💄 Cosméticos Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de accesorios y bisuteria riobamba', label: '💍 Bisutería Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de mascotas riobamba', label: '🐶 Tiendas de mascotas Riobamba' },
+      { ciudad: 'riobamba', query: 'veterinarias y pet shops riobamba', label: '🐾 Pet shops Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de repuestos automotrices riobamba', label: '🚗 Repuestos autos Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de repuestos de motos riobamba', label: '🏍️ Repuestos motos Riobamba' },
+      { ciudad: 'riobamba', query: 'ferreterias riobamba', label: '🔨 Ferreterías Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de pintura y acabados riobamba', label: '🎨 Pinturas Riobamba' },
+      { ciudad: 'riobamba', query: 'licorerias riobamba', label: '🍾 Licorerías Riobamba' },
+      { ciudad: 'riobamba', query: 'depositos de bebidas riobamba', label: '🍺 Depósitos bebidas Riobamba' },
+      { ciudad: 'riobamba', query: 'carnicerias y frigorificos riobamba', label: '🥩 Carnicerías Riobamba' },
+      { ciudad: 'riobamba', query: 'panaderias y pastelerias riobamba', label: '🥐 Panaderías Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas naturistas riobamba', label: '🌿 Tiendas naturistas Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de articulos deportivos riobamba', label: '⚽ Artículos deportivos Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas agropecuarias riobamba', label: '🌾 Agropecuarias Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de telas y confeccion riobamba', label: '🧵 Telas y confección Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de bicicletas riobamba', label: '🚲 Bicicletas Riobamba' },
+      { ciudad: 'riobamba', query: 'tiendas de muebles riobamba', label: '🛋️ Tiendas de muebles Riobamba' },
+      { ciudad: 'riobamba', query: 'opticas riobamba', label: '👓 Ópticas Riobamba' },
+      { ciudad: 'riobamba', query: 'joyerias y relojerias riobamba', label: '⌚ Joyerías Riobamba' },
+
+      // AMBATO (30)
+      { ciudad: 'ambato', query: 'tiendas de calzado ambato', label: '👟 Tiendas de calzado Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de ropa ambato', label: '👗 Tiendas de ropa Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de abarrotes ambato', label: '🛒 Tiendas de abarrotes Ambato' },
+      { ciudad: 'ambato', query: 'minimarkets ambato', label: '🏪 Minimarkets Ambato' },
+      { ciudad: 'ambato', query: 'bazares ambato', label: '🎁 Bazares Ambato' },
+      { ciudad: 'ambato', query: 'papelerias ambato', label: '📚 Papelerías Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de telas y cuero ambato', label: '🧵 Telas y cuero Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de ropa deportiva ambato', label: '🏃 Ropa deportiva Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de celulares ambato', label: '📱 Tiendas de celulares Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de tecnologia ambato', label: '💻 Tiendas de tecnología Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de computacion ambato', label: '🖥️ Computación Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de cosmeticos ambato', label: '💄 Cosméticos Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de accesorios ambato', label: '💍 Accesorios Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de mascotas ambato', label: '🐶 Tiendas de mascotas Ambato' },
+      { ciudad: 'ambato', query: 'veterinarias y pet shops ambato', label: '🐾 Pet shops Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de repuestos de vehiculos ambato', label: '🚗 Repuestos vehículos Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de repuestos de motos ambato', label: '🏍️ Repuestos motos Ambato' },
+      { ciudad: 'ambato', query: 'ferreterias ambato', label: '🔨 Ferreterías Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de pintura y acabados ambato', label: '🎨 Pinturas Ambato' },
+      { ciudad: 'ambato', query: 'licorerias ambato', label: '🍾 Licorerías Ambato' },
+      { ciudad: 'ambato', query: 'distribuidoras de bebidas ambato', label: '🍺 Distribuidoras bebidas Ambato' },
+      { ciudad: 'ambato', query: 'carnicerias ambato', label: '🥩 Carnicerías Ambato' },
+      { ciudad: 'ambato', query: 'panaderias ambato', label: '🥐 Panaderías Ambato' },
+      { ciudad: 'ambato', query: 'tiendas naturistas ambato', label: '🌿 Tiendas naturistas Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de articulos deportivos ambato', label: '⚽ Artículos deportivos Ambato' },
+      { ciudad: 'ambato', query: 'agropecuarias ambato', label: '🌾 Agropecuarias Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de bicicletas ambato', label: '🚲 Bicicletas Ambato' },
+      { ciudad: 'ambato', query: 'tiendas de muebles ambato', label: '🛋️ Tiendas de muebles Ambato' },
+      { ciudad: 'ambato', query: 'opticas ambato', label: '👓 Ópticas Ambato' },
+      { ciudad: 'ambato', query: 'joyerias ambato', label: '⌚ Joyerías Ambato' },
+
+      // TENA (30)
+      { ciudad: 'tena', query: 'tiendas de abarrotes tena', label: '🛒 Tiendas de abarrotes Tena' },
+      { ciudad: 'tena', query: 'minimarkets tena', label: '🏪 Minimarkets Tena' },
+      { ciudad: 'tena', query: 'tiendas de ropa tena', label: '👗 Tiendas de ropa Tena' },
+      { ciudad: 'tena', query: 'bazares tena', label: '🎁 Bazares Tena' },
+      { ciudad: 'tena', query: 'papelerias tena', label: '📚 Papelerías Tena' },
+      { ciudad: 'tena', query: 'zapaterias tena', label: '👟 Zapaterías Tena' },
+      { ciudad: 'tena', query: 'tiendas de calzado tena', label: '🥾 Tiendas de calzado Tena' },
+      { ciudad: 'tena', query: 'tiendas de celulares tena', label: '📱 Tiendas de celulares Tena' },
+      { ciudad: 'tena', query: 'tiendas de tecnologia tena', label: '💻 Tiendas de tecnología Tena' },
+      { ciudad: 'tena', query: 'tiendas de computacion tena', label: '🖥️ Computación Tena' },
+      { ciudad: 'tena', query: 'tiendas de cosmeticos tena', label: '💄 Cosméticos Tena' },
+      { ciudad: 'tena', query: 'tiendas de accesorios y bisuteria tena', label: '💍 Bisutería Tena' },
+      { ciudad: 'tena', query: 'tiendas de mascotas tena', label: '🐶 Tiendas de mascotas Tena' },
+      { ciudad: 'tena', query: 'veterinarias y pet shops tena', label: '🐾 Pet shops Tena' },
+      { ciudad: 'tena', query: 'tiendas de repuestos de motos tena', label: '🏍️ Repuestos motos Tena' },
+      { ciudad: 'tena', query: 'tiendas de repuestos automotrices tena', label: '🚗 Repuestos autos Tena' },
+      { ciudad: 'tena', query: 'ferreterias tena', label: '🔨 Ferreterías Tena' },
+      { ciudad: 'tena', query: 'tiendas de pinturas tena', label: '🎨 Pinturas Tena' },
+      { ciudad: 'tena', query: 'licorerias tena', label: '🍾 Licorerías Tena' },
+      { ciudad: 'tena', query: 'depositos de bebidas tena', label: '🍺 Depósitos bebidas Tena' },
+      { ciudad: 'tena', query: 'carnicerias tena', label: '🥩 Carnicerías Tena' },
+      { ciudad: 'tena', query: 'panaderias tena', label: '🥐 Panaderías Tena' },
+      { ciudad: 'tena', query: 'tiendas naturistas tena', label: '🌿 Naturistas Tena' },
+      { ciudad: 'tena', query: 'tiendas de articulos deportivos tena', label: '⚽ Artículos deportivos Tena' },
+      { ciudad: 'tena', query: 'tiendas agropecuarias tena', label: '🌾 Agropecuarias Tena' },
+      { ciudad: 'tena', query: 'tiendas de pesca y camping tena', label: '🎣 Pesca y camping Tena' },
+      { ciudad: 'tena', query: 'tiendas de bicicletas tena', label: '🚲 Bicicletas Tena' },
+      { ciudad: 'tena', query: 'tiendas de muebles tena', label: '🛋️ Muebles Tena' },
+      { ciudad: 'tena', query: 'opticas tena', label: '👓 Ópticas Tena' },
+      { ciudad: 'tena', query: 'joyerias tena', label: '⌚ Joyerías Tena' }
+    ];
+
+    let ciudadFiltroActual = 'todas';
+    let textoFiltroActual = '';
+    let alturaExpandida = false;
+
+    function renderizarSugerencias() {
+      const contenedor = document.getElementById('contenedorSugerencias');
+      if (!contenedor) return;
+
+      const filtradas = SUGERENCIAS_TIENDAS.filter(item => {
+        const coincideCiudad = (ciudadFiltroActual === 'todas' || item.ciudad === ciudadFiltroActual);
+        const coincideTexto = !textoFiltroActual || 
+          item.label.toLowerCase().includes(textoFiltroActual.toLowerCase()) || 
+          item.query.toLowerCase().includes(textoFiltroActual.toLowerCase());
+        return coincideCiudad && coincideTexto;
+      });
+
+      contenedor.innerHTML = '';
+      if (filtradas.length === 0) {
+        contenedor.innerHTML = '<span class="text-xs text-slate-400 py-1 italic">No se encontraron tiendas con ese filtro.</span>';
+      } else {
+        filtradas.forEach(item => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.onclick = () => setQuery(item.query);
+          btn.className = 'px-2.5 py-1 text-xs bg-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-600 rounded-lg transition-colors border border-slate-200/60 font-medium whitespace-nowrap shadow-2xs cursor-pointer';
+          btn.textContent = item.label;
+          contenedor.appendChild(btn);
+        });
+      }
+
+      const contador = document.getElementById('contadorSugerenciasVisibles');
+      if (contador) {
+        contador.textContent = `Mostrando ${filtradas.length} de ${SUGERENCIAS_TIENDAS.length} sugerencias de tiendas`;
+      }
+    }
+
+    function filtrarSugerencias(ciudad) {
+      ciudadFiltroActual = ciudad;
+      const tabs = document.querySelectorAll('#tabsCiudadSugerencias .tab-ciudad-btn');
+      tabs.forEach(tab => {
+        if (tab.getAttribute('data-ciudad') === ciudad) {
+          tab.className = 'tab-ciudad-btn px-2.5 py-1 rounded-md transition-all font-semibold bg-white text-blue-600 shadow-sm';
+        } else {
+          tab.className = 'tab-ciudad-btn px-2.5 py-1 rounded-md transition-all hover:text-slate-900 text-slate-600';
+        }
+      });
+      renderizarSugerencias();
+    }
+
+    function filtrarSugerenciasPorTexto(texto) {
+      textoFiltroActual = texto.trim();
+      renderizarSugerencias();
+    }
+
+    function toggleAlturaSugerencias() {
+      const contenedor = document.getElementById('contenedorSugerencias');
+      const btn = document.getElementById('btnToggleAltura');
+      if (!contenedor || !btn) return;
+
+      alturaExpandida = !alturaExpandida;
+      if (alturaExpandida) {
+        contenedor.classList.remove('max-h-32');
+        contenedor.classList.add('max-h-[500px]');
+        btn.innerHTML = '<i class="fa-solid fa-down-left-and-up-right-to-center mr-1"></i> Compactar lista';
+      } else {
+        contenedor.classList.remove('max-h-[500px]');
+        contenedor.classList.add('max-h-32');
+        btn.innerHTML = '<i class="fa-solid fa-up-right-and-down-left-from-center mr-1"></i> Expandir lista completa';
+      }
+    }
+
+    function setQuery(q) {
+      document.getElementById('queryInput').value = q;
+      iniciarBusqueda();
+    }
+
+    async function iniciarBusqueda() {
+      const query = document.getElementById('queryInput').value.trim();
+      const limite = parseInt(document.getElementById('limitInput').value, 10);
+      const soloConWhatsapp = document.getElementById('chkSoloWhatsapp').checked;
+      const excluirGrandesCadenas = document.getElementById('chkExcluirCadenas').checked;
+      const soloDel2026 = document.getElementById('chkSolo2026').checked;
+      const maxResenas = parseInt(document.getElementById('maturitySelect').value, 10);
+      const soloNuevosOPequenos = maxResenas < 5000;
+
+      if (!query) return;
+
+      ultimaQuery = query;
+
+      // Estado UI
+      document.getElementById('searchForm').querySelector('button[type="submit"]').disabled = true;
+      document.getElementById('loadingState').classList.remove('hidden');
+      document.getElementById('resultsSection').classList.add('hidden');
+
+      let segundos = 0;
+      const timerEl = document.getElementById('timer');
+      timerEl.textContent = 'Tiempo: 0s';
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        segundos++;
+        timerEl.textContent = `Tiempo transcurrido: ${segundos}s`;
+      }, 1000);
+
+      try {
+        const response = await fetch('/api/leads/buscar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query,
+            limite,
+            soloConWhatsapp,
+            excluirGrandesCadenas,
+            soloDel2026,
+            maxResenas,
+            soloNuevosOPequenos,
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.message || 'Error en la petición');
+        }
+
+        const resData = await response.json();
+        prospectosActuales = resData.data || [];
+        metricasActuales = resData.metricas || {};
+        renderizarResultados();
+      } catch (error) {
+        alert('Error al extraer datos: ' + error.message);
+      } finally {
+        clearInterval(timerInterval);
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('searchForm').querySelector('button[type="submit"]').disabled = false;
+      }
+    }
+
+    function renderizarResultados() {
+      document.getElementById('resultsSection').classList.remove('hidden');
+
+      // Actualizar KPIs
+      const total = prospectosActuales.length;
+      document.getElementById('kpiTotal').textContent = total;
+      document.getElementById('kpiNuevos').textContent = metricasActuales.localesNuevos || 0;
+      document.getElementById('kpiDescarteMadurez').textContent = metricasActuales.descartadosPorMadurez || 0;
+      document.getElementById('kpiDescarteCadena').textContent = metricasActuales.descartadosPorCadena || 0;
+      document.getElementById('kpiDescarteSinWa').textContent = metricasActuales.descartadosSinWhatsapp || 0;
+      document.getElementById('tableBadgeCount').textContent = `${total} PyMEs calificadas`;
+
+      renderizarFilas(prospectosActuales);
+    }
+
+    function renderizarFilas(lista) {
+      const tbody = document.getElementById('leadsTableBody');
+      tbody.innerHTML = '';
+
+      if (lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-slate-400">No se encontraron prospectos para este filtro.</td></tr>`;
+        return;
+      }
+
+      lista.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/80 transition-colors';
+        const numLimpio = p.telefono ? p.telefono.replace(/[^\d]/g, '') : '';
+        tr.setAttribute('data-telefono', numLimpio);
+        tr.setAttribute('data-nombre', p.nombre || '');
+
+        // Badge de Oportunidad / Local Nuevo
+        let oportunidadHtml = '';
+        if (p.esNuevo) {
+          oportunidadHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 shadow-sm"><i class="fa-solid fa-sparkles mr-1"></i>Nuevo Local</span>`;
+        } else if (p.oportunidad && p.oportunidad.includes('ALTA')) {
+          oportunidadHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 shadow-sm"><i class="fa-solid fa-fire mr-1 text-emerald-600"></i>Alta (Sin ERP)</span>`;
+        } else {
+          oportunidadHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">Media (PyME)</span>`;
+        }
+
+        // Botón WhatsApp
+        let waButtonHtml = '';
+        if (p.whatsappUrl) {
+          waButtonHtml = `
+            <a href="${p.whatsappUrl}" target="_blank" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-xs shadow-sm transition-all">
+              <i class="fa-brands fa-whatsapp text-sm"></i>
+              <span>Chatear</span>
+            </a>
+          `;
+        } else {
+          waButtonHtml = `<span class="text-xs text-slate-400 italic">${p.telefono ? 'Solo fijo' : 'Sin número'}</span>`;
+        }
+
+        // Reseñas y Calificación
+        const ratingHtml = p.calificacion 
+          ? `<div class="flex items-center justify-center space-x-1"><i class="fa-solid fa-star text-amber-400 text-xs"></i><span class="font-bold text-slate-800 text-xs">${p.calificacion}</span><span class="text-[10px] text-slate-400">(${p.totalResenas || 0})</span></div>`
+          : `<span class="text-xs text-blue-600 font-bold">Nuevo ✨</span>`;
+
+        // Enlaces web / maps
+        let linksHtml = '<div class="flex items-center justify-center space-x-2">';
+        if (p.sitioWeb) {
+          linksHtml += `<a href="${p.sitioWeb}" target="_blank" title="Visitar sitio web" class="text-blue-500 hover:text-blue-700 text-sm"><i class="fa-solid fa-globe"></i></a>`;
+        }
+        if (p.mapsUrl) {
+          linksHtml += `<a href="${p.mapsUrl}" target="_blank" title="Ver en Google Maps" class="text-red-500 hover:text-red-700 text-sm"><i class="fa-solid fa-location-dot"></i></a>`;
+        }
+        linksHtml += '</div>';
+
+        // Estado de Envío de Campaña
+        let estadoEnvioHtml = '<span class="text-[10px] text-slate-400">Pendiente</span>';
+        if (numLimpio && contactadosTelefonos.has(numLimpio)) {
+          estadoEnvioHtml = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check-double mr-1 text-emerald-600"></i>Enviado</span>';
+        } else if (waEstado.enviando && p.nombre === waEstado.prospectoActual) {
+          estadoEnvioHtml = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 animate-pulse"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Enviando...</span>';
+        }
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-semibold text-slate-900">${escapeHtml(p.nombre)}</td>
+          <td class="py-3 px-4 text-center">${oportunidadHtml}</td>
+          <td class="py-3 px-4 text-slate-600 text-xs">${escapeHtml(p.categoria || 'Comercio')}</td>
+          <td class="py-3 px-4 text-slate-700 font-mono text-xs">${escapeHtml(p.telefono || 'No disponible')}</td>
+          <td class="py-3 px-4 text-center">${waButtonHtml}</td>
+          <td class="py-3 px-4 text-slate-500 text-xs max-w-xs truncate" title="${escapeHtml(p.direccion || '')}">${escapeHtml(p.direccion || 'No especificada')}</td>
+          <td class="py-3 px-4 text-center">${ratingHtml}</td>
+          <td class="py-3 px-4 text-center">${linksHtml}</td>
+          <td class="py-3 px-4 text-center col-estado-envio">${estadoEnvioHtml}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filtrarTabla() {
+      const termino = document.getElementById('filterTableInput').value.toLowerCase();
+      const filtrados = prospectosActuales.filter(p => {
+        return (p.nombre && p.nombre.toLowerCase().includes(termino)) ||
+               (p.categoria && p.categoria.toLowerCase().includes(termino)) ||
+               (p.telefono && p.telefono.includes(termino)) ||
+               (p.direccion && p.direccion.toLowerCase().includes(termino));
+      });
+      renderizarFilas(filtrados);
+    }
+
+    function descargarExcelDirecto() {
+      if (!ultimaQuery) return;
+      const limite = document.getElementById('limitInput').value;
+      const soloConWhatsapp = document.getElementById('chkSoloWhatsapp').checked;
+      const excluirGrandesCadenas = document.getElementById('chkExcluirCadenas').checked;
+      const soloDel2026 = document.getElementById('chkSolo2026').checked;
+      const maxResenas = document.getElementById('maturitySelect').value;
+      window.location.href = `/api/leads/descargar-excel?query=${encodeURIComponent(ultimaQuery)}&limite=${limite}&soloConWhatsapp=${soloConWhatsapp}&excluirGrandesCadenas=${excluirGrandesCadenas}&maxResenas=${maxResenas}&soloDel2026=${soloDel2026}`;
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // ==========================================
+    // MÓDULO DE CAMPAÑA WHATSAPP (ANTI-BANEO)
+    // ==========================================
+    let waEstado = { conectado: false, enviando: false, enviadosHoy: 0, topeDiario: 60 };
+    let contactadosTelefonos = new Set();
+
+    async function actualizarEstadoWhatsApp() {
+      try {
+        const [resEstado, resHistorial] = await Promise.all([
+          fetch('/api/whatsapp/estado'),
+          fetch('/api/whatsapp/historial')
+        ]);
+
+        if (resEstado.ok) {
+          waEstado = await resEstado.json();
+          renderizarEstadoWhatsAppUI();
+        }
+
+        if (resHistorial.ok) {
+          const historial = await resHistorial.json();
+          contactadosTelefonos = new Set(historial.map(h => (h.telefono || '').replace(/[^\d]/g, '')));
+          actualizarBadgesTabla();
+        }
+      } catch (err) {
+        console.warn('Error al consultar estado de WhatsApp:', err);
+      }
+    }
+
+    function renderizarEstadoWhatsAppUI() {
+      const badge = document.getElementById('waStatusBadge');
+      const msg = document.getElementById('waStatusMessage');
+      const countEl = document.getElementById('waSentToday');
+      const btnConnect = document.getElementById('btnWaConnect');
+      const btnStart = document.getElementById('btnWaStart');
+      const btnPause = document.getElementById('btnWaPause');
+      const progressContainer = document.getElementById('waProgressContainer');
+      const progressText = document.getElementById('waProgressText');
+      const countdownEl = document.getElementById('waCountdown');
+      const progressBar = document.getElementById('waProgressBar');
+
+      if (!badge) return;
+
+      countEl.textContent = waEstado.enviadosHoy || 0;
+      msg.textContent = waEstado.mensajeEstado || '';
+
+      if (waEstado.enviando) {
+        badge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 animate-pulse';
+        badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[9px] mr-1.5 text-amber-600"></i> Enviando Campaña';
+        btnStart.classList.add('hidden');
+        btnPause.classList.remove('hidden');
+        progressContainer.classList.remove('hidden');
+
+        progressText.textContent = waEstado.prospectoActual 
+          ? `Enviando a: ${waEstado.prospectoActual}`
+          : 'Procesando envíos...';
+
+        if (waEstado.tiempoSiguienteSegundos && waEstado.tiempoSiguienteSegundos > 0) {
+          countdownEl.textContent = `⏳ Siguiente en ${waEstado.tiempoSiguienteSegundos}s`;
+        } else {
+          countdownEl.textContent = '';
+        }
+
+        const pct = Math.min(100, Math.round(((waEstado.enviadosHoy || 0) / (waEstado.topeDiario || 60)) * 100));
+        progressBar.style.width = `${pct}%`;
+      } else if (waEstado.conectado) {
+        badge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
+        badge.innerHTML = '<i class="fa-solid fa-circle text-[8px] mr-1.5 text-emerald-600"></i> Conectado';
+        btnConnect.innerHTML = '<i class="fa-solid fa-check text-emerald-600"></i><span>WhatsApp Listo</span>';
+        btnConnect.disabled = true;
+        btnConnect.classList.add('opacity-70', 'cursor-default');
+        btnStart.classList.remove('hidden');
+        btnPause.classList.add('hidden');
+        progressContainer.classList.add('hidden');
+      } else {
+        badge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-700';
+        badge.innerHTML = '<i class="fa-solid fa-circle text-[8px] mr-1.5 text-slate-500"></i> Desconectado';
+        btnConnect.disabled = false;
+        btnConnect.classList.remove('opacity-70', 'cursor-default');
+        btnConnect.innerHTML = '<i class="fa-solid fa-qrcode text-emerald-600"></i><span>Conectar WhatsApp</span>';
+        btnStart.classList.remove('hidden');
+        btnPause.classList.add('hidden');
+        progressContainer.classList.add('hidden');
+      }
+    }
+
+    async function conectarWhatsApp() {
+      const btn = document.getElementById('btnWaConnect');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-emerald-600"></i><span>Abriendo WhatsApp...</span>';
+      try {
+        const res = await fetch('/api/whatsapp/conectar', { method: 'POST' });
+        const data = await res.json();
+        alert(data.mensaje || 'Se ha abierto la ventana de WhatsApp Web.');
+      } catch (err) {
+        alert('Error al conectar WhatsApp: ' + err.message);
+      } finally {
+        actualizarEstadoWhatsApp();
+      }
+    }
+
+    let rutaAdjuntoActual = null;
+    let nombreAdjuntoActual = null;
+    let ultimoTextareaEnfocado = null;
+
+    let plantillasMensajes = [
+      "Hola estimad@s de *{nombre}*, un gusto saludarles 👋. Vimos que abrieron recientemente en {sector}. Les escribimos porque somos especialistas en Facturación Electrónica para el SRI 2026, ideal para micro y pequeños negocios. Les comparto nuestra propuesta para que puedan facturar desde el celular o computador sin complicarse. ¿Les gustaría ver una demo de 2 minutos?",
+      "Buenas tardes amigos de *{nombre}* 👋. Qué gusto encontrar su local en {sector}. ¿Cómo están gestionando sus facturas electrónicas para el SRI este 2026? Tenemos un sistema súper sencillo y económico diseñado para nuevos comercios. Les adjunto nuestra información. ¿Con quién podríamos coordinar una prueba?",
+      "Saludos cordiales al equipo de *{nombre}* 👋. Esperamos que sus ventas en {sector} marchen excelente. Les escribo para presentarles nuestro software de facturación electrónica autorizado por el SRI, fácil y rápido para mostrador y celular. Les dejo la información adjunta. ¿Me permiten 2 minutos para mostrarles cómo funciona?"
+    ];
+
+    function toggleConfiguracionMensaje() {
+      const panel = document.getElementById('configMensajePanel');
+      const chevron = document.getElementById('chevronConfigMsg');
+      if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+      } else {
+        panel.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
+      }
+    }
+
+    function renderizarContenedorPlantillas() {
+      const contenedor = document.getElementById('contenedorVariaciones');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      const lbl = document.getElementById('lblTotalVariaciones');
+      if (lbl) {
+        lbl.textContent = `${plantillasMensajes.length} ${plantillasMensajes.length === 1 ? 'Variación activa' : 'Variaciones activas (Rotación 🎲)'}`;
+      }
+
+      plantillasMensajes.forEach((texto, idx) => {
+        const item = document.createElement('div');
+        item.className = 'bg-white p-3 rounded-xl border border-emerald-200 shadow-xs space-y-2';
+
+        const btnEliminarHtml = plantillasMensajes.length > 1
+          ? `<button type="button" onclick="quitarVariacion(${idx})" class="text-[11px] text-red-500 hover:text-red-700 flex items-center space-x-1 font-medium"><i class="fa-solid fa-trash-can text-[10px]"></i><span>Eliminar variación</span></button>`
+          : '';
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+              <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-extrabold">${idx + 1}</span>
+              <span>Variación #${idx + 1}</span>
+            </span>
+            ${btnEliminarHtml}
+          </div>
+          <textarea
+            rows="2"
+            onfocus="ultimoTextareaEnfocado = this"
+            oninput="actualizarPlantilla(${idx}, this.value)"
+            class="w-full p-2.5 text-xs bg-slate-50 focus:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 resize-y"
+            placeholder="Escribe el mensaje para esta variación..."
+          >${escapeHtml(texto)}</textarea>
+        `;
+
+        contenedor.appendChild(item);
+      });
+
+      actualizarPreviewMensaje();
+    }
+
+    function agregarVariacion() {
+      plantillasMensajes.push(
+        "Buenas tardes estimad@s de *{nombre}*, un gusto saludarles. Vimos su negocio en {sector}. ¿Cómo están emitiendo sus comprobantes para el SRI este 2026? Tenemos una solución ágil para celular y PC. Les adjunto nuestra propuesta."
+      );
+      renderizarContenedorPlantillas();
+    }
+
+    function quitarVariacion(idx) {
+      if (plantillasMensajes.length <= 1) return;
+      plantillasMensajes.splice(idx, 1);
+      renderizarContenedorPlantillas();
+    }
+
+    function actualizarPlantilla(idx, valor) {
+      if (idx >= 0 && idx < plantillasMensajes.length) {
+        plantillasMensajes[idx] = valor;
+        actualizarPreviewMensaje();
+      }
+    }
+
+    function insertarVariable(variable) {
+      let txt = ultimoTextareaEnfocado;
+      if (!txt) {
+        const textareas = document.querySelectorAll('#contenedorVariaciones textarea');
+        if (textareas.length > 0) txt = textareas[0];
+      }
+      if (!txt) return;
+
+      const startPos = txt.selectionStart;
+      const endPos = txt.selectionEnd;
+      txt.value = txt.value.substring(0, startPos) + variable + txt.value.substring(endPos, txt.value.length);
+      txt.focus();
+      txt.selectionStart = startPos + variable.length;
+      txt.selectionEnd = startPos + variable.length;
+
+      txt.dispatchEvent(new Event('input'));
+    }
+
+    function actualizarPreviewMensaje() {
+      const preview = document.getElementById('previewMensaje');
+      if (!preview) return;
+
+      const validas = plantillasMensajes.filter(t => t && t.trim().length > 0);
+      if (validas.length === 0) {
+        preview.textContent = 'Sin mensajes configurados.';
+        return;
+      }
+
+      const muestra = validas[0]
+        .replace(/\{nombre\}/gi, 'Bazar Dannita')
+        .replace(/\{sector\}/gi, 'Carapungo')
+        .replace(/\{categoria\}/gi, 'Papelería');
+
+      preview.textContent = `"${muestra}" (${validas.length} plantilla(s) rotando)`;
+    }
+
+    async function subirArchivoAdjunto(input) {
+      if (!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+
+      const statusEl = document.getElementById('statusUploadAdjunto');
+      statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-emerald-600 mr-1"></i> Subiendo ${file.name}...`;
+
+      const formData = new FormData();
+      formData.append('archivo', file);
+
+      try {
+        const res = await fetch('/api/whatsapp/subir-adjunto', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || 'Error al subir archivo');
+        }
+
+        const data = await res.json();
+        rutaAdjuntoActual = data.rutaArchivo;
+        nombreAdjuntoActual = data.nombreOriginal;
+
+        statusEl.innerHTML = `<span class="text-emerald-700 font-semibold"><i class="fa-solid fa-check mr-1"></i> ${data.nombreOriginal}</span>`;
+        document.getElementById('btnQuitarAdjuntoContainer').classList.remove('hidden');
+        
+        const tag = document.getElementById('tagAdjuntoActivo');
+        tag.classList.remove('hidden');
+        document.getElementById('lblAdjuntoNombre').textContent = data.nombreOriginal;
+      } catch (err) {
+        alert('Error al subir archivo: ' + err.message);
+        quitarArchivoAdjunto();
+      }
+    }
+
+    function quitarArchivoAdjunto() {
+      rutaAdjuntoActual = null;
+      nombreAdjuntoActual = null;
+      document.getElementById('fileAdjuntoInput').value = '';
+      document.getElementById('statusUploadAdjunto').textContent = 'Ningún archivo adjuntado';
+      document.getElementById('btnQuitarAdjuntoContainer').classList.add('hidden');
+      document.getElementById('tagAdjuntoActivo').classList.add('hidden');
+    }
+
+    async function iniciarCampanaWhatsApp() {
+      if (!prospectosActuales || prospectosActuales.length === 0) {
+        alert('Primero debes realizar una búsqueda y tener prospectos cargados.');
+        return;
+      }
+
+      if (!waEstado.conectado) {
+        alert('Primero debes conectar WhatsApp Web y escanear el código QR.');
+        return;
+      }
+
+      const plantillasValidas = plantillasMensajes.map(t => t.trim()).filter(t => t.length > 0);
+
+      const confirmacion = confirm(`¿Deseas iniciar el envío automático a ${prospectosActuales.length} prospectos con pausas humanas de 20s a 45s (Tope máximo de 60 hoy)?\n\n🎲 Rotando entre ${plantillasValidas.length} variaciones de mensaje.${rutaAdjuntoActual ? '\n📎 Incluye archivo adjunto: ' + nombreAdjuntoActual : ''}`);
+      if (!confirmacion) return;
+
+      try {
+        const res = await fetch('/api/whatsapp/iniciar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prospectos: prospectosActuales,
+            plantillas: plantillasValidas,
+            archivoAdjuntoPath: rutaAdjuntoActual,
+          }),
+        });
+        const data = await res.json();
+        alert(data.mensaje);
+        actualizarEstadoWhatsApp();
+      } catch (err) {
+        alert('Error al iniciar campaña: ' + err.message);
+      }
+    }
+
+    async function pausarCampanaWhatsApp() {
+      try {
+        const res = await fetch('/api/whatsapp/pausar', { method: 'POST' });
+        const data = await res.json();
+        alert(data.mensaje);
+        actualizarEstadoWhatsApp();
+      } catch (err) {
+        alert('Error al pausar: ' + err.message);
+      }
+    }
+
+    function actualizarBadgesTabla() {
+      const tbody = document.getElementById('leadsTableBody');
+      if (!tbody) return;
+      const rows = tbody.querySelectorAll('tr[data-telefono]');
+      rows.forEach(row => {
+        const tel = row.getAttribute('data-telefono');
+        const badgeCell = row.querySelector('.col-estado-envio');
+        if (badgeCell && tel) {
+          if (contactadosTelefonos.has(tel)) {
+            badgeCell.innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check-double mr-1 text-emerald-600"></i>Enviado</span>';
+          } else if (waEstado.enviando && row.getAttribute('data-nombre') === waEstado.prospectoActual) {
+            badgeCell.innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 animate-pulse"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Enviando...</span>';
+          }
+        }
+      });
+    }
+
+    // Iniciar sondeo de estado, preview y sugerencias al cargar
+    actualizarEstadoWhatsApp();
+    setInterval(actualizarEstadoWhatsApp, 3000);
+    renderizarSugerencias();
+    document.getElementById('txtMensajePersonalizado')?.addEventListener('input', actualizarPreviewMensaje);
+    actualizarPreviewMensaje();
+  </script>
+</body>
+</html>
