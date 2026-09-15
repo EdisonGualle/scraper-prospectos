@@ -52,6 +52,7 @@ export class WhatsappService {
     mensajePersonalizado?: string;
     archivoAdjuntoPath?: string;
     archivosAdjuntosPaths?: string[];
+    tipoAdjunto?: 'foto' | 'documento';
   };
 
   constructor() {
@@ -236,6 +237,7 @@ export class WhatsappService {
       mensajePersonalizado?: string;
       archivoAdjuntoPath?: string;
       archivosAdjuntosPaths?: string[];
+      tipoAdjunto?: 'foto' | 'documento';
     },
   ): Promise<{ exito: boolean; mensaje: string }> {
     if (!this.conectado || !this.page) {
@@ -423,28 +425,68 @@ export class WhatsappService {
 
       if (archivosValidos.length > 0) {
         try {
+          const modoEnvio = this.opcionesCampana?.tipoAdjunto || 'foto';
           this.logger.log(
-            `Adjuntando ${archivosValidos.length} imagen(es)/archivo(s) para ${prospecto.nombre}...`,
+            `Adjuntando ${archivosValidos.length} archivo(s) para ${prospecto.nombre} (Modo: ${modoEnvio})...`,
           );
 
-          // Buscar el input de archivos o desplegar el menú de adjuntos (+)
-          let fileInput = await this.page.$('input[type="file"]');
-          if (!fileInput) {
-            const attachBtn = await this.page.$(
-              'button[title*="Adjuntar"], span[data-icon="plus"], div[title*="Adjuntar"], span[data-icon="clip"], button[aria-label*="Adjuntar"]',
-            );
-            if (attachBtn) {
-              await attachBtn.click();
-              await new Promise((r) => setTimeout(r, 1200));
-              fileInput = await this.page.$('input[type="file"]');
+          // 1. Desplegar menú de adjuntos (+)
+          const attachBtn = await this.page.$(
+            'button[title*="Adjuntar"], span[data-icon="plus"], div[title*="Adjuntar"], span[data-icon="clip"], button[aria-label*="Adjuntar"]',
+          );
+          if (attachBtn) {
+            await attachBtn.click();
+            await new Promise((r) => setTimeout(r, 1000));
+          }
+
+          // 2. Obtener todos los inputs de archivo en la página
+          const allInputs = await this.page.$$('input[type="file"]');
+          let targetInput = null;
+
+          const hayPdfs = archivosValidos.some(
+            (p) => p.toLowerCase().endsWith('.pdf') || p.toLowerCase().endsWith('.docx'),
+          );
+          const enviarComoDocumento = hayPdfs || modoEnvio === 'documento';
+
+          for (const inp of allInputs) {
+            const accept = await inp.evaluate((el: HTMLInputElement) => el.accept || '');
+            
+            if (enviarComoDocumento) {
+              // Input de documentos en WhatsApp Web (accept="*" o sin filtro)
+              if (accept === '*' || accept === '' || accept.includes('application/')) {
+                targetInput = inp;
+                break;
+              }
+            } else {
+              // Input de Fotos y Videos en WhatsApp Web:
+              // WhatsApp Web usa: accept="image/*,video/mp4,video/3gpp,video/quicktime"
+              // OJO: WhatsApp usa accept="image/png,image/jpeg,image/webp" para su STICKER MAKER.
+              // Por tanto, descartamos estrictamente el que contenga "image/webp" sin "video"
+              const esInputSticker = accept.includes('image/webp') && !accept.includes('video');
+              if (accept.includes('image/*') && !esInputSticker) {
+                targetInput = inp;
+                break;
+              }
             }
           }
 
-          if (fileInput) {
-            // Subir todos los archivos juntos en WhatsApp Web
-            await fileInput.uploadFile(...archivosValidos);
+          // Si no encontró el preferido, usar cualquiera que NO sea el creador de stickers
+          if (!targetInput) {
+            for (const inp of allInputs) {
+              const accept = await inp.evaluate((el: HTMLInputElement) => el.accept || '');
+              const esInputSticker = accept.includes('image/webp') && !accept.includes('video');
+              if (!esInputSticker) {
+                targetInput = inp;
+                break;
+              }
+            }
+          }
 
-            // Esperar al botón de envío de la vista previa de medios
+          if (targetInput) {
+            // Subir archivos al input de adjuntos normal
+            await targetInput.uploadFile(...archivosValidos);
+
+            // Esperar al botón de envío de la vista previa de medios en WhatsApp Web
             const sendMediaBtnSelector =
               'span[data-icon="send"], div[aria-label*="Enviar"], button[aria-label*="Enviar"]';
             await this.page.waitForSelector(sendMediaBtnSelector, { timeout: 25000 });
@@ -458,8 +500,10 @@ export class WhatsappService {
             }
             await new Promise((r) => setTimeout(r, 3500));
             this.logger.log(
-              `Adjuntos (${archivosValidos.length}) enviados exitosamente a "${prospecto.nombre}".`,
+              `Archivos (${archivosValidos.length}) enviados exitosamente como adjunto regular a "${prospecto.nombre}".`,
             );
+          } else {
+            this.logger.warn('No se encontró el selector de adjuntos adecuado en WhatsApp Web.');
           }
         } catch (adjuntoErr) {
           this.logger.warn(

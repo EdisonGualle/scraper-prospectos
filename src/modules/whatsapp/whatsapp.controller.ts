@@ -85,6 +85,7 @@ export class WhatsappController {
     @Body('mensajePersonalizado') mensajePersonalizado?: string,
     @Body('archivosAdjuntosPaths') archivosAdjuntosPaths?: string[],
     @Body('archivoAdjuntoPath') archivoAdjuntoPath?: string,
+    @Body('tipoAdjunto') tipoAdjunto?: 'foto' | 'documento',
   ) {
     if (!prospectos || !Array.isArray(prospectos) || prospectos.length === 0) {
       return { exito: false, mensaje: 'Debes enviar una lista válida de prospectos.' };
@@ -94,6 +95,7 @@ export class WhatsappController {
       mensajePersonalizado,
       archivosAdjuntosPaths,
       archivoAdjuntoPath,
+      tipoAdjunto,
     });
   }
 

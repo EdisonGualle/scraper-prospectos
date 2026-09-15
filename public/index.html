@@ -386,6 +386,21 @@
                 </div>
               </div>
 
+              <!-- Opciones de modo de envío de imágenes -->
+              <div class="flex flex-wrap items-center gap-4 pt-1.5 border-t border-emerald-100 text-xs text-slate-700">
+                <span class="font-bold text-slate-600 flex items-center gap-1">
+                  <i class="fa-solid fa-sliders text-emerald-600"></i> Enviar imágenes como:
+                </span>
+                <label class="inline-flex items-center space-x-1.5 cursor-pointer">
+                  <input type="radio" name="tipoAdjunto" value="foto" checked class="text-emerald-600 focus:ring-emerald-500" />
+                  <span class="font-semibold text-emerald-950">📷 Foto grande en chat (Nunca sticker)</span>
+                </label>
+                <label class="inline-flex items-center space-x-1.5 cursor-pointer">
+                  <input type="radio" name="tipoAdjunto" value="documento" class="text-emerald-600 focus:ring-emerald-500" />
+                  <span class="font-medium text-slate-600">📄 Archivo / Documento (Sin compresión)</span>
+                </label>
+              </div>
+
               <!-- Contenedor de miniaturas / chips de archivos adjuntados -->
               <div id="listaAdjuntosContainer" class="flex flex-wrap items-center gap-2 pt-1">
                 <!-- Chips de archivos renderizados dinámicamente -->
@@ -1240,8 +1255,9 @@
 
       const plantillasValidas = plantillasMensajes.map(t => t.trim()).filter(t => t.length > 0);
       const rutasAdjuntos = archivosAdjuntos.map(a => a.rutaArchivo);
+      const tipoAdjunto = document.querySelector('input[name="tipoAdjunto"]:checked')?.value || 'foto';
 
-      const confirmacion = confirm(`¿Deseas iniciar el envío automático a ${prospectosActuales.length} prospectos con pausas humanas de 20s a 45s (Tope máximo de 60 hoy)?\n\n🎲 Rotando entre ${plantillasValidas.length} variaciones de CodeCima.${rutasAdjuntos.length > 0 ? `\n📎 Adjuntando ${rutasAdjuntos.length} imagen(es)/archivo(s) por cada mensaje.` : ''}`);
+      const confirmacion = confirm(`¿Deseas iniciar el envío automático a ${prospectosActuales.length} prospectos con pausas humanas de 20s a 45s (Tope máximo de 60 hoy)?\n\n🎲 Rotando entre ${plantillasValidas.length} variaciones de CodeCima.${rutasAdjuntos.length > 0 ? `\n📎 Adjuntando ${rutasAdjuntos.length} imagen(es)/archivo(s) como ${tipoAdjunto === 'foto' ? 'FOTO NORMAL' : 'DOCUMENTO'}.` : ''}`);
       if (!confirmacion) return;
 
       try {
@@ -1252,6 +1268,7 @@
             prospectos: prospectosActuales,
             plantillas: plantillasValidas,
             archivosAdjuntosPaths: rutasAdjuntos,
+            tipoAdjunto: tipoAdjunto,
           }),
         });
         const data = await res.json();
