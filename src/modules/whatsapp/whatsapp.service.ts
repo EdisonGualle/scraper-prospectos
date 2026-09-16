@@ -64,6 +64,9 @@ export class WhatsappService {
       if (!existsSync(this.dataDir)) {
         await fs.mkdir(this.dataDir, { recursive: true });
       }
+      if (!existsSync(this.sessionPath)) {
+        await fs.mkdir(this.sessionPath, { recursive: true });
+      }
       if (!existsSync(this.uploadsDir)) {
         await fs.mkdir(this.uploadsDir, { recursive: true });
       }
@@ -90,6 +93,46 @@ export class WhatsappService {
       tiempoSiguienteSegundos: this.tiempoSiguienteSegundos,
       qrCode: this.qrCode,
     };
+  }
+
+  isConectado(): boolean {
+    return this.conectado;
+  }
+
+  isEnviando(): boolean {
+    return this.enviando;
+  }
+
+  getTopeDiario(): number {
+    return this.topeDiario;
+  }
+
+  /**
+   * Normaliza cualquier formato de teléfono de Ecuador (+593, 09..., 9...)
+   * para deduplicación robusta.
+   */
+  public static normalizarTelefono(tel?: string): { digitos: string; ultimos9: string; canonico: string } {
+    if (!tel) return { digitos: '', ultimos9: '', canonico: '' };
+    const digitos = tel.replace(/[^\d]/g, '');
+    const ultimos9 = digitos.length >= 9 ? digitos.slice(-9) : digitos;
+    const canonico = `593${ultimos9}`;
+    return { digitos, ultimos9, canonico };
+  }
+
+  /**
+   * Genera un Set con todas las variantes conocidas de los teléfonos ya contactados
+   * en el historial persistido (data/contactados.json).
+   */
+  public async obtenerSetContactados(): Promise<Set<string>> {
+    const historial = await this.obtenerHistorial();
+    const set = new Set<string>();
+    for (const h of historial) {
+      const { digitos, ultimos9, canonico } = WhatsappService.normalizarTelefono(h.telefono);
+      if (digitos) set.add(digitos);
+      if (ultimos9) set.add(ultimos9);
+      if (canonico) set.add(canonico);
+    }
+    return set;
   }
 
   /**
@@ -143,12 +186,19 @@ export class WhatsappService {
           '--window-position=50,50',
           '--no-first-run',
           '--no-default-browser-check',
+          '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         ],
       });
 
       const pages = await this.browser.pages();
       this.page = pages.length > 0 ? pages[0] : await this.browser.newPage();
       await this.page.setViewport({ width: 1280, height: 850 });
+      await this.page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      );
+      try {
+        await this.page.bringToFront();
+      } catch {}
 
       // Cargar WhatsApp Web
       await this.page.goto('https://web.whatsapp.com', {
@@ -171,7 +221,7 @@ export class WhatsappService {
   }
 
   /**
-   * Monitorea si ya se autenticó o captura el QR en base64 para mostrarlo en la interfaz web.
+   * Monitorea de forma continua si ya se autenticó o captura el QR en base64 para la interfaz web.
    */
   private iniciarMonitoreoAutenticacionYQr() {
     if (this.intervaloMonitoreo) {
@@ -180,16 +230,43 @@ export class WhatsappService {
 
     let intentos = 0;
     this.intervaloMonitoreo = setInterval(async () => {
-      if (this.conectado || !this.page || this.page.isClosed()) {
+      if (!this.page || this.page.isClosed()) {
         if (this.intervaloMonitoreo) clearInterval(this.intervaloMonitoreo);
+        this.conectado = false;
+        this.qrCode = null;
         return;
       }
 
       intentos++;
 
       try {
-        // 1. Verificar si el panel de chats ya cargó (sesión iniciada)
-        const panelChats = await this.page.$('#pane-side, [data-icon="chat"], div[role="textbox"]');
+        // 1. Detectar si hay QR en pantalla (Usuario aún no autenticado)
+        const canvasOrQr = await this.page.$(
+          'div[data-ref], canvas[aria-label*="Scan"], canvas, div[role="button"]:has(canvas)',
+        );
+        if (canvasOrQr) {
+          this.conectado = false;
+          try {
+            const qrBase64 = await canvasOrQr.screenshot({ encoding: 'base64' });
+            this.qrCode = `data:image/png;base64,${qrBase64}`;
+            this.mensajeEstado = 'Código QR listo. Escanéalo con tu celular en la pantalla o en la ventana de Chrome.';
+          } catch {}
+
+          // Si el QR expiró, hacer clic en recargar
+          const reloadBtn = await this.page.$(
+            'div[role="button"]:has(span[data-icon="refresh"]), span[data-icon="refresh"], button[aria-label*="recargar"], button[aria-label*="reload"]',
+          );
+          if (reloadBtn) {
+            await reloadBtn.click();
+            await new Promise((r) => setTimeout(r, 1000));
+          }
+          return;
+        }
+
+        // 2. Si no hay QR, verificar si ya cargó la interfaz autenticada de chats
+        const panelChats = await this.page.$(
+          '#pane-side, [data-icon="community"], header [data-icon="chat"], header [data-icon="status-outline"], div[aria-label="Chat list"], div[aria-label="Lista de chats"]',
+        );
         if (panelChats) {
           this.conectado = true;
           this.qrCode = null;
@@ -199,22 +276,8 @@ export class WhatsappService {
           return;
         }
 
-        // 2. Si no está autenticado, intentar capturar el QR
-        const canvas = await this.page.$('canvas');
-        if (canvas) {
-          const qrBase64 = await canvas.screenshot({ encoding: 'base64' });
-          this.qrCode = `data:image/png;base64,${qrBase64}`;
-          this.mensajeEstado = 'Código QR disponible. Escanéalo con tu celular en la pantalla o en Chrome.';
-        } else {
-          // Si el QR expiró, presionar el botón de recarga
-          const reloadBtn = await this.page.$(
-            'div[role="button"]:has(span[data-icon="refresh"]), span[data-icon="refresh"], button[aria-label*="recargar"]',
-          );
-          if (reloadBtn) {
-            await reloadBtn.click();
-            await new Promise((r) => setTimeout(r, 1000));
-          }
-        }
+        // 3. En progreso de carga inicial
+        this.mensajeEstado = 'Cargando WhatsApp Web... Por favor espera unos segundos.';
 
         // Si pasan 5 minutos sin escanear, detener
         if (intentos > 150) {
@@ -222,13 +285,13 @@ export class WhatsappService {
           if (this.intervaloMonitoreo) clearInterval(this.intervaloMonitoreo);
         }
       } catch (err) {
-        // Ignorar errores transitorios de navegación
+        // Ignorar errores de navegación transitorios
       }
-    }, 2000);
+    }, 1500);
   }
 
   /**
-   * Inicia la campaña de envíos automatizados con tope diario de 60 y pausas aleatorias.
+   * Inicia la campaña manual de envíos automatizados en segundo plano.
    */
   async iniciarCampana(
     prospectos: ProspectoDto[],
@@ -273,13 +336,16 @@ export class WhatsappService {
     };
 
     // Filtrar solo prospectos con número celular y no contactados previamente
-    const historial = await this.obtenerHistorial();
-    const telefonosContactados = new Set(historial.map((h) => h.telefono));
+    const telefonosContactadosSet = await this.obtenerSetContactados();
 
     const candidatos = prospectos.filter((p) => {
       if (!p.telefono || !p.whatsappUrl) return false;
-      const numLimpio = p.telefono.replace(/[^\d]/g, '');
-      return !telefonosContactados.has(numLimpio);
+      const { digitos, ultimos9, canonico } = WhatsappService.normalizarTelefono(p.telefono);
+      return (
+        !telefonosContactadosSet.has(digitos) &&
+        !telefonosContactadosSet.has(ultimos9) &&
+        !telefonosContactadosSet.has(canonico)
+      );
     });
 
     if (candidatos.length === 0) {
@@ -300,10 +366,106 @@ export class WhatsappService {
   }
 
   /**
+   * Procesa un lote de prospectos sincrónicamente (espera a que termine el lote actual).
+   */
+  async procesarLoteProspectos(
+    prospectos: ProspectoDto[],
+    opciones?: {
+      plantillas?: string[];
+      mensajePersonalizado?: string;
+      archivoAdjuntoPath?: string;
+      archivosAdjuntosPaths?: string[];
+      tipoAdjunto?: 'foto' | 'documento';
+    },
+  ): Promise<{ exito: boolean; mensaje: string; enviados: number; topeAlcanzado: boolean; cancelado: boolean }> {
+    if (!this.conectado || !this.page) {
+      return {
+        exito: false,
+        mensaje: 'Primero debes conectar WhatsApp Web y escanear el código QR.',
+        enviados: 0,
+        topeAlcanzado: false,
+        cancelado: false,
+      };
+    }
+
+    if (this.enviando) {
+      return {
+        exito: false,
+        mensaje: 'Ya hay una campaña de envíos en ejecución.',
+        enviados: 0,
+        topeAlcanzado: false,
+        cancelado: false,
+      };
+    }
+
+    const enviadosHoy = await this.contarEnviadosHoy();
+    if (enviadosHoy >= this.topeDiario) {
+      return {
+        exito: false,
+        mensaje: `Ya alcanzaste el tope seguro de ${this.topeDiario} mensajes para hoy.`,
+        enviados: 0,
+        topeAlcanzado: true,
+        cancelado: false,
+      };
+    }
+
+    // Normalizar archivos adjuntos
+    let adjuntosFinales: string[] = [];
+    if (opciones?.archivosAdjuntosPaths && Array.isArray(opciones.archivosAdjuntosPaths)) {
+      adjuntosFinales = opciones.archivosAdjuntosPaths.filter((p) => existsSync(p));
+    } else if (opciones?.archivoAdjuntoPath && existsSync(opciones.archivoAdjuntoPath)) {
+      adjuntosFinales = [opciones.archivoAdjuntoPath];
+    }
+
+    this.opcionesCampana = {
+      ...opciones,
+      archivosAdjuntosPaths: adjuntosFinales,
+    };
+
+    const telefonosContactadosSet = await this.obtenerSetContactados();
+
+    const candidatos = prospectos.filter((p) => {
+      if (!p.telefono || !p.whatsappUrl) return false;
+      const { digitos, ultimos9, canonico } = WhatsappService.normalizarTelefono(p.telefono);
+      return (
+        !telefonosContactadosSet.has(digitos) &&
+        !telefonosContactadosSet.has(ultimos9) &&
+        !telefonosContactadosSet.has(canonico)
+      );
+    });
+
+    if (candidatos.length === 0) {
+      return {
+        exito: true,
+        mensaje: 'No hay prospectos nuevos en este lote.',
+        enviados: 0,
+        topeAlcanzado: false,
+        cancelado: false,
+      };
+    }
+
+    this.enviando = true;
+    this.pausarSolicitado = false;
+    const res = await this.ejecutarColaEnvios(candidatos);
+
+    return {
+      exito: true,
+      mensaje: `Lote procesado: ${res.enviados} enviados.`,
+      enviados: res.enviados,
+      topeAlcanzado: res.topeAlcanzado,
+      cancelado: res.cancelado,
+    };
+  }
+
+  /**
    * Bucle asíncrono que procesa la cola con intervalos aleatorios.
    */
-  private async ejecutarColaEnvios(candidatos: ProspectoDto[]) {
+  private async ejecutarColaEnvios(
+    candidatos: ProspectoDto[],
+  ): Promise<{ enviados: number; topeAlcanzado: boolean; cancelado: boolean }> {
     let index = 0;
+    let enviadosExitosos = 0;
+    let topeAlcanzado = false;
 
     for (const prospecto of candidatos) {
       if (this.pausarSolicitado) {
@@ -314,6 +476,7 @@ export class WhatsappService {
 
       const totalHoy = await this.contarEnviadosHoy();
       if (totalHoy >= this.topeDiario) {
+        topeAlcanzado = true;
         this.mensajeEstado = `Tope diario de ${this.topeDiario} envíos alcanzado. Pausando automáticamente por seguridad.`;
         this.logger.log(this.mensajeEstado);
         break;
@@ -327,6 +490,7 @@ export class WhatsappService {
       const exitoEnvio = await this.enviarMensajeProspecto(prospecto);
 
       if (exitoEnvio) {
+        enviadosExitosos++;
         const nuevosEnviados = await this.contarEnviadosHoy();
         this.logger.log(
           `[${nuevosEnviados}/${this.topeDiario}] Enviado exitosamente a: ${prospecto.nombre} (${prospecto.telefono})`,
@@ -335,6 +499,13 @@ export class WhatsappService {
 
       // Si aún quedan prospectos, esperar un tiempo aleatorio humano (20 a 45 seg)
       if (index < candidatos.length && !this.pausarSolicitado) {
+        const totalTrasEnvio = await this.contarEnviadosHoy();
+        if (totalTrasEnvio >= this.topeDiario) {
+          topeAlcanzado = true;
+          this.mensajeEstado = `Tope diario de ${this.topeDiario} envíos alcanzado.`;
+          break;
+        }
+
         const esperaSegundos = Math.floor(20 + Math.random() * 25);
         this.tiempoSiguienteSegundos = esperaSegundos;
 
@@ -350,16 +521,33 @@ export class WhatsappService {
     this.enviando = false;
     this.prospectoActual = undefined;
     this.tiempoSiguienteSegundos = 0;
-    if (!this.pausarSolicitado) {
-      this.mensajeEstado = 'Campaña finalizada exitosamente.';
+    if (!this.pausarSolicitado && !topeAlcanzado) {
+      this.mensajeEstado = 'Campaña de este lote finalizada exitosamente.';
     }
+
+    return {
+      enviados: enviadosExitosos,
+      topeAlcanzado,
+      cancelado: this.pausarSolicitado,
+    };
   }
 
   /**
    * Envía un mensaje individual en WhatsApp Web y adjunta múltiples imágenes/archivos.
    */
-  private async enviarMensajeProspecto(prospecto: ProspectoDto): Promise<boolean> {
+  public async enviarMensajeProspecto(
+    prospecto: ProspectoDto,
+    opcionesOverride?: {
+      plantillas?: string[];
+      mensajePersonalizado?: string;
+      archivoAdjuntoPath?: string;
+      archivosAdjuntosPaths?: string[];
+      tipoAdjunto?: 'foto' | 'documento';
+    },
+  ): Promise<boolean> {
     if (!this.page || !prospecto.telefono) return false;
+
+    const opciones = opcionesOverride || this.opcionesCampana;
 
     // Normalizar número telefónico internacional para Ecuador (5939...)
     const numLimpio = prospecto.telefono.replace(/[^\d]/g, '');
@@ -371,7 +559,7 @@ export class WhatsappService {
 
     // 1. Obtener la plantilla a usar: si hay lista de plantillas, rotar aleatoriamente
     let plantillaSeleccionada = '';
-    const plantillasValidas = (this.opcionesCampana?.plantillas || []).filter(
+    const plantillasValidas = (opciones?.plantillas || []).filter(
       (p) => p && p.trim().length > 0,
     );
 
@@ -379,10 +567,10 @@ export class WhatsappService {
       const indice = Math.floor(Math.random() * plantillasValidas.length);
       plantillaSeleccionada = plantillasValidas[indice];
     } else if (
-      this.opcionesCampana?.mensajePersonalizado &&
-      this.opcionesCampana.mensajePersonalizado.trim().length > 0
+      opciones?.mensajePersonalizado &&
+      opciones.mensajePersonalizado.trim().length > 0
     ) {
-      plantillaSeleccionada = this.opcionesCampana.mensajePersonalizado;
+      plantillaSeleccionada = opciones.mensajePersonalizado;
     }
 
     // 2. Reemplazar variables dinámicas {nombre}, {sector}, {categoria}
@@ -420,90 +608,116 @@ export class WhatsappService {
       await new Promise((r) => setTimeout(r, 2000));
 
       // 3. Adjuntar múltiples imágenes / archivos si fueron configurados
-      const archivos = this.opcionesCampana?.archivosAdjuntosPaths || [];
+      const archivos = opciones?.archivosAdjuntosPaths || [];
       const archivosValidos = archivos.filter((p) => existsSync(p));
 
       if (archivosValidos.length > 0) {
         try {
-          const modoEnvio = this.opcionesCampana?.tipoAdjunto || 'foto';
-          this.logger.log(
-            `Adjuntando ${archivosValidos.length} archivo(s) para ${prospecto.nombre} (Modo: ${modoEnvio})...`,
-          );
-
-          // 1. Desplegar menú de adjuntos (+)
-          const attachBtn = await this.page.$(
-            'button[title*="Adjuntar"], span[data-icon="plus"], div[title*="Adjuntar"], span[data-icon="clip"], button[aria-label*="Adjuntar"]',
-          );
-          if (attachBtn) {
-            await attachBtn.click();
-            await new Promise((r) => setTimeout(r, 1000));
-          }
-
-          // 2. Obtener todos los inputs de archivo en la página
-          const allInputs = await this.page.$$('input[type="file"]');
-          let targetInput = null;
-
+          const modoEnvio = opciones?.tipoAdjunto || 'foto';
           const hayPdfs = archivosValidos.some(
             (p) => p.toLowerCase().endsWith('.pdf') || p.toLowerCase().endsWith('.docx'),
           );
           const enviarComoDocumento = hayPdfs || modoEnvio === 'documento';
+          const modoTexto = enviarComoDocumento ? 'documento' : 'foto';
 
-          for (const inp of allInputs) {
-            const accept = await inp.evaluate((el: HTMLInputElement) => el.accept || '');
-            
-            if (enviarComoDocumento) {
-              // Input de documentos en WhatsApp Web (accept="*" o sin filtro)
-              if (accept === '*' || accept === '' || accept.includes('application/')) {
-                targetInput = inp;
-                break;
-              }
-            } else {
-              // Input de Fotos y Videos en WhatsApp Web:
-              // WhatsApp Web usa: accept="image/*,video/mp4,video/3gpp,video/quicktime"
-              // OJO: WhatsApp usa accept="image/png,image/jpeg,image/webp" para su STICKER MAKER.
-              // Por tanto, descartamos estrictamente el que contenga "image/webp" sin "video"
-              const esInputSticker = accept.includes('image/webp') && !accept.includes('video');
-              if (accept.includes('image/*') && !esInputSticker) {
-                targetInput = inp;
-                break;
-              }
-            }
+          this.logger.log(
+            `Adjuntando ${archivosValidos.length} archivo(s) para ${prospecto.nombre} (Modo: ${modoTexto})...`,
+          );
+
+          // 1. Abrir menú de adjuntos (+) en WhatsApp Web
+          const attachBtnSelector =
+            'button[aria-label="Adjuntar"], button[title*="Adjuntar"], span[data-icon="plus-rounded"], [data-testid="plus-rounded"], span[data-icon="plus"]';
+
+          const btnAdjuntar = await this.page.$(attachBtnSelector);
+          if (btnAdjuntar) {
+            await this.page.evaluate((el) => {
+              const btn = (el as HTMLElement).closest('button') || el;
+              (btn as HTMLElement).click();
+            }, btnAdjuntar);
+          } else {
+            // Intentar con el primer botón de la barra inferior
+            await this.page.evaluate(() => {
+              const b = document.querySelector('footer button') as HTMLElement;
+              if (b) b.click();
+            });
           }
 
-          // Si no encontró el preferido, usar cualquiera que NO sea el creador de stickers
-          if (!targetInput) {
+          // Breve pausa para que se despliegue el menú flotante
+          await new Promise((r) => setTimeout(r, 1200));
+
+          const labelBuscado = enviarComoDocumento ? 'documento' : 'fotos y videos';
+          let archivoCargado = false;
+
+          // Método A: interceptar el diálogo de archivos del sistema al hacer clic en el ítem del menú
+          try {
+            const [fileChooser] = await Promise.all([
+              this.page.waitForFileChooser({ timeout: 5000 }).catch(() => null),
+              this.page.evaluate((targetLabel) => {
+                const items = Array.from(
+                  document.querySelectorAll('button[role="menuitem"], li[role="button"], [role="menu"] button, div[role="button"]'),
+                );
+                const item = items.find((el) => {
+                  const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+                  const txt = ((el as HTMLElement).innerText || '').toLowerCase();
+                  return aria.includes(targetLabel) || txt.includes(targetLabel);
+                }) as HTMLElement;
+                if (item) item.click();
+              }, labelBuscado),
+            ]);
+
+            if (fileChooser) {
+              await fileChooser.accept(archivosValidos);
+              archivoCargado = true;
+              this.logger.log(`Archivos cargados exitosamente vía fileChooser nativo (${labelBuscado}).`);
+            }
+          } catch (fcErr) {
+            this.logger.warn(`FileChooser timeout o no disponible: ${(fcErr as Error).message}`);
+          }
+
+          // Método B: Fallback directo cargando en los inputs de archivo del DOM
+          if (!archivoCargado) {
+            await new Promise((r) => setTimeout(r, 1200));
+            const allInputs = await this.page.$$('input[type="file"]');
             for (const inp of allInputs) {
-              const accept = await inp.evaluate((el: HTMLInputElement) => el.accept || '');
-              const esInputSticker = accept.includes('image/webp') && !accept.includes('video');
-              if (!esInputSticker) {
-                targetInput = inp;
+              const accept = await inp.evaluate((el) => ((el as HTMLInputElement).accept || '').toLowerCase());
+              // Evitar estrictamente el creador de stickers webp
+              if (accept.includes('webp') && !accept.includes('video')) continue;
+
+              const coincide = enviarComoDocumento
+                ? accept === '*' || accept === '' || accept.includes('application')
+                : accept.includes('video') || accept.includes('image');
+
+              if (coincide) {
+                await inp.uploadFile(...archivosValidos);
+                archivoCargado = true;
+                this.logger.log(`Archivos cargados exitosamente vía uploadFile en input (${accept}).`);
                 break;
               }
             }
           }
 
-          if (targetInput) {
-            // Subir archivos al input de adjuntos normal
-            await targetInput.uploadFile(...archivosValidos);
-
-            // Esperar al botón de envío de la vista previa de medios en WhatsApp Web
+          if (archivoCargado) {
+            // Esperar al botón verde de envío en la vista previa de medios
             const sendMediaBtnSelector =
-              'span[data-icon="send"], div[aria-label*="Enviar"], button[aria-label*="Enviar"]';
+              'span[data-icon="send"], div[aria-label*="Enviar"], button[aria-label*="Enviar"], [data-testid="send"]';
             await this.page.waitForSelector(sendMediaBtnSelector, { timeout: 25000 });
             await new Promise((r) => setTimeout(r, 1500));
 
             const sendBtn = await this.page.$(sendMediaBtnSelector);
             if (sendBtn) {
-              await sendBtn.click();
+              await this.page.evaluate((el) => {
+                const btn = (el as HTMLElement).closest('button') || el;
+                (btn as HTMLElement).click();
+              }, sendBtn);
             } else {
               await this.page.keyboard.press('Enter');
             }
-            await new Promise((r) => setTimeout(r, 3500));
+            await new Promise((r) => setTimeout(r, 4000));
             this.logger.log(
-              `Archivos (${archivosValidos.length}) enviados exitosamente como adjunto regular a "${prospecto.nombre}".`,
+              `Archivos (${archivosValidos.length}) enviados exitosamente como imagen/documento real a "${prospecto.nombre}".`,
             );
           } else {
-            this.logger.warn('No se encontró el selector de adjuntos adecuado en WhatsApp Web.');
+            this.logger.warn('No se pudo cargar el archivo por ninguno de los métodos disponibles en WhatsApp Web.');
           }
         } catch (adjuntoErr) {
           this.logger.warn(
@@ -621,7 +835,194 @@ export class WhatsappService {
     return { agregados, total: historial.length };
   }
 
-  private async contarEnviadosHoy(): Promise<number> {
+  /**
+   * Envía un mensaje de prueba a un número específico para verificar textos y fotos sin stickers.
+   */
+  public async enviarMensajePrueba(
+    telefono: string,
+    opciones?: {
+      mensaje?: string;
+      archivosAdjuntosPaths?: string[];
+      tipoAdjunto?: 'foto' | 'documento';
+    },
+  ): Promise<{ exito: boolean; mensaje: string }> {
+    if (!this.conectado || !this.page) {
+      return {
+        exito: false,
+        mensaje: 'WhatsApp Web no está conectado. Por favor conecta WhatsApp primero.',
+      };
+    }
+
+    const telLimpio = telefono.replace(/[^\d]/g, '');
+    if (telLimpio.length < 8) {
+      return {
+        exito: false,
+        mensaje: 'Ingresa un número telefónico válido (ej. 0991234567 o 593991234567).',
+      };
+    }
+
+    const prospectoTest: ProspectoDto = {
+      nombre: 'Prueba de Sistema',
+      telefono: telLimpio,
+      direccion: 'Ecuador',
+      categoria: 'Tienda de Ropa',
+      terminoBusqueda: 'prueba',
+      fechaCaptura: new Date().toISOString(),
+    };
+
+    this.logger.log(`Iniciando envío de prueba a: ${telLimpio}...`);
+
+    try {
+      const exito = await this.enviarMensajeProspecto(prospectoTest, {
+        mensajePersonalizado: opciones?.mensaje || '¡Hola {nombre}! Este es un mensaje de prueba de CodeCima.',
+        archivosAdjuntosPaths: opciones?.archivosAdjuntosPaths,
+        tipoAdjunto: opciones?.tipoAdjunto || 'foto',
+      });
+
+      if (exito) {
+        return {
+          exito: true,
+          mensaje: `✅ Mensaje de prueba enviado exitosamente al número ${telefono}.`,
+        };
+      } else {
+        return {
+          exito: false,
+          mensaje: `No se pudo enviar el mensaje a ${telefono}. Verifica si el número tiene WhatsApp activo.`,
+        };
+      }
+    } catch (err) {
+      return {
+        exito: false,
+        mensaje: `Error al enviar prueba: ${(err as Error).message}`,
+      };
+    }
+  }
+
+  public async debugAdjuntos(telefono?: string) {
+    if (!this.page) return { error: 'No hay página activa' };
+
+    if (telefono) {
+      const sendUrl = `https://web.whatsapp.com/send?phone=${telefono}`;
+      await this.page.goto(sendUrl, {
+        waitUntil: 'domcontentloaded',
+        timeout: 35000,
+      });
+      const chatInputSelector =
+        'div[contenteditable="true"][data-tab="10"], footer div[contenteditable="true"], div[role="textbox"]';
+      await this.page.waitForSelector(chatInputSelector, { timeout: 25000 }).catch(() => {});
+      await new Promise((r) => setTimeout(r, 2500));
+    }
+
+    // Inspeccionar antes de hacer click
+    const antesDeClick = await this.page.evaluate(() => {
+      const chatButtons = Array.from(document.querySelectorAll('footer button, div[role="textbox"] ~ * button, [data-icon]')).map((el) => {
+        const btn = el.tagName === 'BUTTON' ? el : el.closest('button');
+        return {
+          tag: el.tagName,
+          icon: el.getAttribute('data-icon'),
+          ariaLabel: el.getAttribute('aria-label') || btn?.getAttribute('aria-label') || '',
+          title: el.getAttribute('title') || btn?.getAttribute('title') || '',
+          btnOuter: btn?.outerHTML.slice(0, 150) || el.outerHTML.slice(0, 150),
+        };
+      });
+
+      const inputsAntes = Array.from(document.querySelectorAll('input[type="file"]')).map((inp, idx) => ({
+        idx,
+        accept: (inp as HTMLInputElement).accept,
+        outerHTML: inp.outerHTML,
+      }));
+
+      return { chatButtons: chatButtons.slice(0, 30), inputsAntes };
+    });
+
+    // Intentar hacer click en el botón de adjuntar
+    const clickResultado = await this.page.evaluate(() => {
+      const posibles = [
+        document.querySelector('button[aria-label="Adjuntar"]'),
+        document.querySelector('button[title*="Adjuntar"]'),
+        document.querySelector('[data-icon="plus-rounded"]')?.closest('button'),
+        document.querySelector('[data-icon="plus"]')?.closest('button'),
+        document.querySelector('[data-icon="attach-menu-plus"]')?.closest('button'),
+        document.querySelector('[data-icon="clip"]')?.closest('button'),
+        document.querySelector('footer button:first-child'),
+      ].filter(Boolean);
+
+      if (posibles.length > 0) {
+        const target = posibles[0] as HTMLElement;
+        target.click();
+        return { encontrado: true, html: target.outerHTML.slice(0, 200) };
+      }
+      return { encontrado: false };
+    });
+
+    // Esperar a que se abra el menú
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Inspeccionar después de hacer click
+    const despuesDeClick = await this.page.evaluate(() => {
+      const menuButtons = Array.from(
+        document.querySelectorAll('button[role="menuitem"], li[role="button"], [role="menu"] *')
+      ).map((el) => ({
+        tag: el.tagName,
+        ariaLabel: el.getAttribute('aria-label') || '',
+        text: ((el as HTMLElement).innerText || '').trim(),
+        html: el.outerHTML.slice(0, 300),
+        hasInput: !!el.querySelector('input[type="file"]'),
+        inputHtml: el.querySelector('input[type="file"]')?.outerHTML || '',
+      }));
+
+      // Buscar todos los inputs de tipo file en toda la página
+      const allInputs = Array.from(document.querySelectorAll('input[type="file"]')).map((inp, idx) => ({
+        idx,
+        accept: (inp as HTMLInputElement).accept,
+        outer: inp.outerHTML,
+        parentTag: inp.parentElement?.tagName,
+        parentHtml: inp.parentElement?.outerHTML.slice(0, 200),
+      }));
+
+      return { menuButtons, allInputs };
+    });
+
+    // Probar hacer clic en 'Fotos y videos' capturando con waitForFileChooser
+    let fileChooserDisparado = false;
+    let errorFileChooser = '';
+    try {
+      const [fileChooser] = await Promise.all([
+        this.page.waitForFileChooser({ timeout: 4000 }).catch((e) => {
+          errorFileChooser = (e as Error).message;
+          return null;
+        }),
+        this.page.evaluate(() => {
+          const btn = Array.from(document.querySelectorAll('button[role="menuitem"], li, button')).find((b) => {
+            const lbl = (b.getAttribute('aria-label') || '').toLowerCase();
+            const txt = ((b as HTMLElement).innerText || '').toLowerCase();
+            return lbl.includes('fotos y videos') || txt.includes('fotos y videos');
+          }) as HTMLElement;
+          if (btn) btn.click();
+        }),
+      ]);
+
+      if (fileChooser) {
+        fileChooserDisparado = true;
+      }
+    } catch (e) {
+      errorFileChooser = (e as Error).message;
+    }
+
+    // Ver si después de hacer click en Fotos y videos apareció algún input o modal
+    const estadoFinal = await this.page.evaluate(() => {
+      const inputs = Array.from(document.querySelectorAll('input[type="file"]')).map((inp, idx) => ({
+        idx,
+        accept: (inp as HTMLInputElement).accept,
+        outer: inp.outerHTML,
+      }));
+      return { inputs, modales: document.querySelectorAll('[role="dialog"]').length };
+    });
+
+    return { antesDeClick, clickResultado, despuesDeClick, fileChooserDisparado, errorFileChooser, estadoFinal };
+  }
+
+  public async contarEnviadosHoy(): Promise<number> {
     const hoy = new Date().toISOString().slice(0, 10);
     const historial = await this.obtenerHistorial();
     return historial.filter((item) => item.fecha.startsWith(hoy)).length;

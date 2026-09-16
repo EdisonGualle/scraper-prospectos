@@ -47,15 +47,42 @@
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
     <!-- Tarjeta de Búsqueda -->
+    <!-- Tarjeta de Búsqueda y Auto-Piloto -->
     <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200">
-      <div class="max-w-3xl">
-        <h2 class="text-xl font-bold text-slate-900 mb-2">Buscar comercios y negocios locales</h2>
-        <p class="text-sm text-slate-500 mb-6">
-          Ingresa el tipo de negocio y la ciudad en Ecuador para extraer teléfonos, WhatsApp y datos de contacto.
-        </p>
+      <div class="max-w-4xl">
 
-        <!-- Formulario -->
-        <form id="searchForm" class="space-y-4" onsubmit="event.preventDefault(); iniciarBusqueda();">
+        <!-- Selector de Modo de Prospección -->
+        <div class="flex items-center space-x-2 p-1 bg-slate-100 rounded-xl max-w-fit mb-6">
+          <button
+            type="button"
+            id="tabModoManual"
+            onclick="cambiarModoProspeccion('manual')"
+            class="px-4 py-2 text-xs font-bold rounded-lg transition-all bg-white text-slate-900 shadow-xs flex items-center space-x-1.5"
+          >
+            <i class="fa-solid fa-magnifying-glass text-blue-600"></i>
+            <span>Búsqueda Individual</span>
+          </button>
+          <button
+            type="button"
+            id="tabModoAuto"
+            onclick="cambiarModoProspeccion('auto')"
+            class="px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-600 hover:text-slate-900 flex items-center space-x-1.5"
+          >
+            <i class="fa-solid fa-robot text-purple-600"></i>
+            <span>Auto-Piloto Continuo (Hasta 60/día)</span>
+            <span class="px-1.5 py-0.5 rounded-md text-[10px] bg-purple-100 text-purple-700 font-extrabold uppercase">Nuevo</span>
+          </button>
+        </div>
+
+        <!-- MODO 1: Búsqueda Manual / Individual -->
+        <div id="panelModoManual">
+          <h2 class="text-xl font-bold text-slate-900 mb-2">Buscar comercios y negocios locales</h2>
+          <p class="text-sm text-slate-500 mb-6">
+            Ingresa el tipo de negocio y la ciudad en Ecuador para extraer teléfonos, WhatsApp y datos de contacto.
+          </p>
+
+          <!-- Formulario -->
+          <form id="searchForm" class="space-y-4" onsubmit="event.preventDefault(); iniciarBusqueda();">
           <div class="flex flex-col sm:flex-row gap-3">
             <div class="relative flex-1">
               <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -171,7 +198,315 @@
           </div>
         </form>
       </div>
+
+      <!-- MODO 2: Auto-Piloto Continuo Multi-Tema -->
+      <div id="panelModoAuto" class="hidden space-y-5">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-robot text-purple-600"></i> Prospección y Envíos Autónomos Multi-Tema
+          </h2>
+          <p class="text-xs text-slate-500">
+            Ingresa una lista de búsquedas (una por línea). El sistema escraeará cada tema, enviará mensajes por WhatsApp a las PyMEs calificadas, y si no completa el tope de 60 diarios, esperará una pausa de ~5 minutos (anti-bloqueo) y pasará al siguiente tema automáticamente.
+          </p>
+        </div>
+
+        <!-- Textarea de Temas -->
+        <div class="space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <label for="autopilotoTemasInput" class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <i class="fa-solid fa-list-check text-purple-600"></i> Lista de búsquedas a procesar:
+            </label>
+            <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span class="text-slate-400">Rutas rápidas:</span>
+              <button type="button" onclick="cargarPresetAutopiloto('oriente')" class="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 text-purple-800 rounded font-semibold transition-colors">🌿 Tena & Puyo</button>
+              <button type="button" onclick="cargarPresetAutopiloto('sierra')" class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded font-semibold transition-colors">🏔️ Riobamba & Ambato</button>
+              <button type="button" onclick="cargarPresetAutopiloto('aleatorio')" class="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded font-semibold transition-colors">🎲 6 Tiendas Aleatorias</button>
+              <button type="button" onclick="limpiarTemasAutopiloto()" class="px-2 py-0.5 text-red-500 hover:text-red-700 font-medium">Limpiar</button>
+            </div>
+          </div>
+          <textarea
+            id="autopilotoTemasInput"
+            rows="5"
+            oninput="actualizarConteoTemas()"
+            class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 leading-relaxed"
+            placeholder="ferreterias tena&#10;bazares tena&#10;farmacias puyo&#10;panaderias riobamba&#10;tiendas abarrotes ambato"
+          ></textarea>
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span id="lblConteoTemas">0 temas ingresados</span>
+            <span>1 búsqueda por línea (rubro + ciudad)</span>
+          </div>
+        </div>
+
+        <!-- Ajustes de Automatización -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <!-- Pausa de enfriamiento entre temas -->
+          <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-3">
+            <label class="block text-xs font-bold text-amber-950 mb-1 flex items-center gap-1">
+              <i class="fa-solid fa-stopwatch text-amber-600"></i> Pausa entre búsquedas:
+            </label>
+            <select id="autopilotoPausaMinutos" class="w-full text-xs font-semibold p-2 bg-white border border-amber-300 rounded-lg text-amber-950 focus:outline-none">
+              <option value="3">3 minutos</option>
+              <option value="5" selected>5 minutos (Recomendado)</option>
+              <option value="8">8 minutos</option>
+              <option value="10">10 minutos</option>
+            </select>
+            <p class="text-[10px] text-amber-800/80 mt-1">Evita bloqueos de Google Maps y WhatsApp.</p>
+          </div>
+
+          <!-- Límite por tema -->
+          <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-3">
+            <label class="block text-xs font-bold text-blue-950 mb-1 flex items-center gap-1">
+              <i class="fa-solid fa-users text-blue-600"></i> Límite por búsqueda:
+            </label>
+            <select id="autopilotoLimitePorTema" class="w-full text-xs font-semibold p-2 bg-white border border-blue-300 rounded-lg text-blue-950 focus:outline-none">
+              <option value="15">15 prospectos por tema</option>
+              <option value="20">20 prospectos por tema</option>
+              <option value="30">30 prospectos por tema</option>
+              <option value="50">50 prospectos por tema</option>
+              <option value="100" selected>100 prospectos por tema (Recomendado)</option>
+            </select>
+            <p class="text-[10px] text-blue-800/80 mt-1">Prospectos PyME calificados a extraer.</p>
+          </div>
+
+          <!-- Tope seguro diario -->
+          <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 flex flex-col justify-between">
+            <div>
+              <label class="block text-xs font-bold text-emerald-950 mb-1 flex items-center gap-1">
+                <i class="fa-solid fa-shield-check text-emerald-600"></i> Tope seguro diario:
+              </label>
+              <div class="text-sm font-extrabold text-emerald-700">
+                <span id="lblAutoPilotoEnviadosHoy">0</span> / 60 mensajes
+              </div>
+            </div>
+            <p class="text-[10px] text-emerald-800/80 mt-1">El sistema se detiene solo al alcanzar 60.</p>
+          </div>
+        </div>
+
+        <!-- Adjuntos e Imágenes del Auto-Piloto -->
+        <div class="bg-purple-50/70 border border-purple-200 rounded-xl p-3.5 space-y-2.5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div class="flex items-center space-x-2.5">
+              <label class="cursor-pointer px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center space-x-2 transition-all shadow-sm shadow-purple-600/20">
+                <i class="fa-solid fa-paperclip text-sm"></i>
+                <span>Adjuntar Foto o PDF</span>
+                <input type="file" id="fileAdjuntoInputAuto" multiple onchange="subirArchivosAdjuntos(this)" accept=".pdf,.png,.jpg,.jpeg,.webp" class="hidden" />
+              </label>
+              <span id="statusUploadAdjuntoAuto" class="text-xs text-slate-600 font-medium">Ningún archivo adjunto (se enviará solo texto)</span>
+            </div>
+
+            <div class="flex items-center space-x-3 text-xs text-slate-700">
+              <label class="inline-flex items-center space-x-1.5 cursor-pointer">
+                <input type="radio" name="tipoAdjuntoAuto" value="foto" checked onchange="sincronizarTipoAdjunto(this.value)" class="text-purple-600 focus:ring-purple-500">
+                <span class="font-medium">📷 Foto en chat</span>
+              </label>
+              <label class="inline-flex items-center space-x-1.5 cursor-pointer">
+                <input type="radio" name="tipoAdjuntoAuto" value="documento" onchange="sincronizarTipoAdjunto(this.value)" class="text-purple-600 focus:ring-purple-500">
+                <span class="font-medium">📄 Documento</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Chips de archivos cargados -->
+          <div id="listaAdjuntosContainerAuto" class="flex flex-wrap gap-2 pt-0.5"></div>
+        </div>
+
+        <!-- Casillero de Prueba de Envío Rápido -->
+        <div class="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-100/70 border border-emerald-300 rounded-xl p-3.5 space-y-2">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <div>
+              <span class="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                <i class="fa-solid fa-flask text-emerald-600"></i> Probar envío a mi número (Verificar foto y texto)
+              </span>
+              <p class="text-[11px] text-emerald-900/80 mt-0.5">
+                Ingresa tu celular para confirmar que la foto llega en tamaño real (sin stickers) y el texto se lee bien.
+              </p>
+            </div>
+            <span class="text-[10px] font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-200 shadow-2xs self-start sm:self-auto">
+              📸 Foto grande en chat garantizada
+            </span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2 pt-0.5">
+            <div class="relative flex-1">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                <i class="fa-brands fa-whatsapp text-emerald-600"></i>
+              </div>
+              <input
+                type="text"
+                id="inputTelefonoPrueba"
+                placeholder="Ingresa tu celular ej: 0991234567 o 593991234567"
+                class="w-full pl-8 pr-3 py-2 bg-white border border-emerald-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+              />
+            </div>
+            <button
+              type="button"
+              id="btnEnviarPrueba"
+              onclick="enviarMensajePrueba()"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center justify-center space-x-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Enviar Mensaje de Prueba</span>
+            </button>
+          </div>
+          <div id="statusEnvioPrueba" class="text-xs font-medium hidden"></div>
+        </div>
+
+        <!-- Botón de Inicio y Controles -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div class="text-xs text-slate-500">
+            <i class="fa-solid fa-circle-info text-purple-600 mr-1"></i> La imagen adjunta y las plantillas de mensaje se rotarán automáticamente.
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button
+              type="button"
+              id="btnIniciarAutoPiloto"
+              onclick="iniciarAutoPiloto()"
+              class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-600/20 flex items-center space-x-2 transition-all disabled:opacity-50"
+            >
+              <i class="fa-solid fa-bolt"></i>
+              <span>Iniciar Auto-Piloto (Hasta 60)</span>
+            </button>
+
+            <button
+              type="button"
+              id="btnPausarAutoPiloto"
+              onclick="pausarAutoPiloto()"
+              class="hidden px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center space-x-1.5 transition-all"
+            >
+              <i class="fa-solid fa-pause"></i>
+              <span>Pausar</span>
+            </button>
+
+            <button
+              type="button"
+              id="btnReanudarAutoPiloto"
+              onclick="reanudarAutoPiloto()"
+              class="hidden px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center space-x-1.5 transition-all"
+            >
+              <i class="fa-solid fa-play"></i>
+              <span>Reanudar</span>
+            </button>
+
+            <button
+              type="button"
+              id="btnDetenerAutoPiloto"
+              onclick="detenerAutoPiloto()"
+              class="hidden px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center space-x-1.5 transition-all"
+            >
+              <i class="fa-solid fa-stop"></i>
+              <span>Detener</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Monitor en Vivo del Auto-Piloto con 2 Agentes en Loop -->
+        <div id="autopilotoMonitor" class="hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-850 rounded-2xl p-5 text-white shadow-xl space-y-4 border border-slate-750">
+          <!-- Encabezado del Monitor -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-network-wired"></i>
+              </div>
+              <div>
+                <div class="flex items-center space-x-2">
+                  <h3 class="text-sm font-bold text-white">Sistema Loop de 2 Agentes Cooperativos</h3>
+                  <span id="autoFaseBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    🔄 En Ejecución Concurrente
+                  </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-0.5">Scraper y WhatsApp operando en paralelo con cola compartida</p>
+              </div>
+            </div>
+
+            <!-- Indicador de Cola Compartida (Buffer) -->
+            <div class="bg-slate-800/90 border border-slate-700 px-3.5 py-1.5 rounded-xl flex items-center space-x-2.5">
+              <i class="fa-solid fa-boxes-stacked text-blue-400"></i>
+              <div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cola de Espera (Buffer):</div>
+                <div class="text-xs font-mono font-bold text-white">
+                  <span id="autoColaPendientes" class="text-blue-400 text-sm font-black">0</span> comercios esperando
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cuadrícula de los 2 Agentes -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Tarjeta Agente 1: Explorador / Scraper Maps -->
+            <div class="bg-slate-800/70 border border-blue-500/30 rounded-xl p-3.5 space-y-2 relative overflow-hidden">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-black">1</span>
+                  <span class="text-xs font-bold text-blue-300">🤖 Agente 1: Explorador Maps</span>
+                </div>
+                <span id="agente1FaseBadge" class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  🔍 Buscando
+                </span>
+              </div>
+              <div class="text-xs text-slate-200">
+                <div class="font-mono text-[11px] text-slate-400" id="agente1TemaActual">Tema: Inactivo</div>
+                <div class="mt-1 font-medium text-slate-300" id="agente1Mensaje">Iniciando explorador de Google Maps...</div>
+              </div>
+              <!-- Cronómetro de Enfriamiento de 5 min -->
+              <div id="agente1CronometroContainer" class="hidden bg-amber-500/10 border border-amber-500/30 p-2 rounded-lg flex items-center justify-between text-xs text-amber-300">
+                <span class="flex items-center gap-1 font-bold"><i class="fa-solid fa-hourglass-half animate-spin"></i> Enfriamiento anti-bloqueo:</span>
+                <span id="agente1CronometroTimer" class="font-mono font-black text-amber-400 text-sm">05:00</span>
+              </div>
+              <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-700/50 flex justify-between">
+                <span>Aportados a la cola: <b id="agente1Encolados" class="text-blue-400 font-bold">0</b></span>
+                <span>Evaluados: <b id="agente1Evaluados" class="text-slate-300 font-bold">0</b></span>
+              </div>
+            </div>
+
+            <!-- Tarjeta Agente 2: Despachador / Mensajero WhatsApp -->
+            <div class="bg-slate-800/70 border border-emerald-500/30 rounded-xl p-3.5 space-y-2 relative overflow-hidden">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-black">2</span>
+                  <span class="text-xs font-bold text-emerald-300">💬 Agente 2: Mensajero WhatsApp</span>
+                </div>
+                <span id="agente2FaseBadge" class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  💬 Despachando
+                </span>
+              </div>
+              <div class="text-xs text-slate-200">
+                <div class="font-mono text-[11px] text-slate-400" id="agente2ProspectoActual">Destinatario: Ninguno</div>
+                <div class="mt-1 font-medium text-slate-300" id="agente2Mensaje">Iniciando despachador...</div>
+              </div>
+              <!-- Cronómetro de Pausa Humana (20s-45s) -->
+              <div id="agente2CronometroContainer" class="hidden bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-lg flex items-center justify-between text-xs text-emerald-300">
+                <span class="flex items-center gap-1 font-bold"><i class="fa-solid fa-clock"></i> Pausa humana anti-baneo:</span>
+                <span id="agente2CronometroTimer" class="font-mono font-black text-emerald-400 text-sm">25s</span>
+              </div>
+              <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-700/50 flex justify-between">
+                <span>Enviados en esta sesión: <b id="agente2EnviadosSesion" class="text-emerald-400 font-bold">0</b></span>
+                <span>Meta diaria: <b id="agente2MetaDiaria" class="text-slate-300 font-bold">0 / 60</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Barra de Avance Diario Unificada -->
+          <div class="space-y-1.5 bg-slate-800/40 p-3 rounded-xl border border-slate-800">
+            <div class="flex justify-between text-xs">
+              <span class="text-slate-300">Avance diario hacia el tope seguro:</span>
+              <span id="autoProgresoTexto" class="font-bold text-emerald-400 font-mono">0 / 60 enviados hoy (0%)</span>
+            </div>
+            <div class="w-full bg-slate-700/60 rounded-full h-2.5 overflow-hidden">
+              <div id="autoBarraProgreso" class="bg-gradient-to-r from-purple-500 via-blue-500 to-emerald-400 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Historial de temas completados -->
+          <div id="autoHistorialTemasContainer" class="hidden space-y-1.5 pt-1">
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Búsquedas completadas en esta sesión:</span>
+            <div id="autoHistorialTemasLista" class="max-h-24 overflow-y-auto space-y-1 text-xs pr-1 divide-y divide-slate-700/40 font-mono">
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 
     <!-- Indicador de Carga -->
     <div id="loadingState" class="hidden bg-white rounded-2xl p-12 border border-slate-200 text-center shadow-sm">
@@ -282,6 +617,10 @@
               <span>Contactados (<span id="countContactadosHeader">0</span>)</span>
             </button>
 
+            <span id="waAutoAviso" class="hidden text-xs text-purple-800 bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-robot text-purple-600"></i> Controlado por Auto-Piloto
+            </span>
+
             <button
               type="button"
               id="btnWaStart"
@@ -289,7 +628,7 @@
               class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center space-x-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <i class="fa-solid fa-paper-plane"></i>
-              <span>Iniciar Envíos (Max 60)</span>
+              <span>Iniciar Envíos Manuales</span>
             </button>
 
             <button
@@ -960,6 +1299,11 @@
         // Si hay QR disponible y el modal está abierto, mostrar el QR
         if (waEstado.qrCode) {
           actualizarImagenQr(waEstado.qrCode);
+        } else {
+          const lblMsg = document.getElementById('lblQrMensajeEstado');
+          if (lblMsg && waEstado.mensajeEstado) {
+            lblMsg.textContent = waEstado.mensajeEstado;
+          }
         }
       }
 
@@ -1189,25 +1533,37 @@
       }
     }
 
+    function sincronizarTipoAdjunto(val) {
+      const radios1 = document.querySelectorAll('input[name="tipoAdjunto"]');
+      const radios2 = document.querySelectorAll('input[name="tipoAdjuntoAuto"]');
+      radios1.forEach(r => { if (r.value === val) r.checked = true; });
+      radios2.forEach(r => { if (r.value === val) r.checked = true; });
+    }
+
     function renderizarListaAdjuntos() {
       const contenedor = document.getElementById('listaAdjuntosContainer');
+      const contenedorAuto = document.getElementById('listaAdjuntosContainerAuto');
       const statusEl = document.getElementById('statusUploadAdjunto');
+      const statusElAuto = document.getElementById('statusUploadAdjuntoAuto');
       const btnLimpiar = document.getElementById('btnQuitarAdjuntoContainer');
       const tagBadge = document.getElementById('tagAdjuntoActivo');
       const lblBadge = document.getElementById('lblAdjuntosTotalBadge');
-      if (!contenedor) return;
 
-      contenedor.innerHTML = '';
+      if (contenedor) contenedor.innerHTML = '';
+      if (contenedorAuto) contenedorAuto.innerHTML = '';
 
       if (archivosAdjuntos.length === 0) {
-        statusEl.textContent = 'Ningún archivo adjuntado';
-        btnLimpiar.classList.add('hidden');
+        if (statusEl) statusEl.textContent = 'Ningún archivo adjuntado';
+        if (statusElAuto) statusElAuto.textContent = 'Ningún archivo adjunto (se enviará solo texto)';
+        if (btnLimpiar) btnLimpiar.classList.add('hidden');
         if (tagBadge) tagBadge.classList.add('hidden');
         return;
       }
 
-      statusEl.innerHTML = `<span class="text-emerald-800 font-bold">${archivosAdjuntos.length} archivo(s) listos para enviar</span>`;
-      btnLimpiar.classList.remove('hidden');
+      const msgArchivos = `${archivosAdjuntos.length} archivo(s) listo(s) para enviar`;
+      if (statusEl) statusEl.innerHTML = `<span class="text-emerald-800 font-bold">${msgArchivos}</span>`;
+      if (statusElAuto) statusElAuto.innerHTML = `<span class="text-purple-900 font-bold">✅ ${msgArchivos}</span>`;
+      if (btnLimpiar) btnLimpiar.classList.remove('hidden');
 
       if (tagBadge && lblBadge) {
         tagBadge.classList.remove('hidden');
@@ -1215,19 +1571,30 @@
       }
 
       archivosAdjuntos.forEach((adj, idx) => {
-        const chip = document.createElement('div');
-        chip.className = 'inline-flex items-center space-x-1.5 px-2.5 py-1 bg-white border border-emerald-300 rounded-lg text-xs text-emerald-900 shadow-2xs';
         const esPdf = adj.nombreOriginal.toLowerCase().endsWith('.pdf');
         const icono = esPdf ? 'fa-file-pdf text-red-500' : 'fa-image text-blue-500';
         const tamKb = Math.round(adj.tamano / 1024);
 
-        chip.innerHTML = `
+        const chipHtml = `
           <i class="fa-solid ${icono} text-xs"></i>
           <span class="max-w-[140px] truncate font-medium" title="${escapeHtml(adj.nombreOriginal)}">${escapeHtml(adj.nombreOriginal)}</span>
           <span class="text-[10px] text-slate-400 font-mono">(${tamKb}KB)</span>
           <button type="button" onclick="quitarAdjuntoIndividual(${idx})" title="Quitar archivo" class="text-slate-400 hover:text-red-500 ml-1 p-0.5"><i class="fa-solid fa-xmark"></i></button>
         `;
-        contenedor.appendChild(chip);
+
+        if (contenedor) {
+          const chip = document.createElement('div');
+          chip.className = 'inline-flex items-center space-x-1.5 px-2.5 py-1 bg-white border border-emerald-300 rounded-lg text-xs text-emerald-900 shadow-2xs';
+          chip.innerHTML = chipHtml;
+          contenedor.appendChild(chip);
+        }
+
+        if (contenedorAuto) {
+          const chipAuto = document.createElement('div');
+          chipAuto.className = 'inline-flex items-center space-x-1.5 px-2.5 py-1 bg-white border border-purple-300 rounded-lg text-xs text-purple-900 shadow-2xs';
+          chipAuto.innerHTML = chipHtml;
+          contenedorAuto.appendChild(chipAuto);
+        }
       });
     }
 
@@ -1239,6 +1606,71 @@
     function limpiarTodosLosAdjuntos() {
       archivosAdjuntos = [];
       renderizarListaAdjuntos();
+    }
+
+    async function enviarMensajePrueba() {
+      const inputTel = document.getElementById('inputTelefonoPrueba');
+      const btn = document.getElementById('btnEnviarPrueba');
+      const statusEl = document.getElementById('statusEnvioPrueba');
+      const tel = (inputTel ? inputTel.value : '').trim();
+
+      if (!tel) {
+        alert('Por favor escribe tu número de teléfono (ej. 0991234567 o 593991234567).');
+        if (inputTel) inputTel.focus();
+        return;
+      }
+
+      // Verificar WhatsApp conectado
+      try {
+        const resEstado = await fetch('/api/whatsapp/estado');
+        if (resEstado.ok) waEstado = await resEstado.json();
+      } catch {}
+
+      if (!waEstado.conectado) {
+        alert('Debes conectar WhatsApp Web primero antes de enviar la prueba.');
+        abrirModalQr();
+        try { await fetch('/api/whatsapp/conectar', { method: 'POST' }); } catch {}
+        return;
+      }
+
+      // Obtener mensaje (primera plantilla activa o mensaje predeterminado)
+      const plantillasValidas = plantillasMensajes.filter(t => t && t.trim().length > 0);
+      const mensaje = plantillasValidas[0] || 'Hola {nombre} 👋, este es un mensaje de prueba desde CodeCima.';
+      const rutasAdjuntos = archivosAdjuntos.map(a => a.rutaArchivo);
+      const tipoAdjunto = document.querySelector('input[name="tipoAdjuntoAuto"]:checked')?.value || document.querySelector('input[name="tipoAdjunto"]:checked')?.value || 'foto';
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i><span>Enviando prueba a WhatsApp...</span>';
+      statusEl.className = 'text-xs text-blue-700 font-medium block pt-1';
+      statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Abriendo chat en WhatsApp Web y enviando foto grande...';
+
+      try {
+        const res = await fetch('/api/whatsapp/enviar-prueba', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telefono: tel,
+            mensaje,
+            archivosAdjuntosPaths: rutasAdjuntos,
+            tipoAdjunto,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.exito) {
+          statusEl.className = 'text-xs text-emerald-800 font-bold block pt-1 bg-emerald-100/80 p-2.5 rounded-xl border border-emerald-300';
+          statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 mr-1.5 text-sm"></i> ${data.mensaje} Revisa tu celular ahora mismo.`;
+        } else {
+          statusEl.className = 'text-xs text-red-700 font-bold block pt-1 bg-red-50 p-2.5 rounded-xl border border-red-200';
+          statusEl.innerHTML = `<i class="fa-solid fa-circle-xmark text-red-600 mr-1.5 text-sm"></i> ${data.mensaje}`;
+        }
+      } catch (err) {
+        statusEl.className = 'text-xs text-red-700 font-bold block pt-1 bg-red-50 p-2 rounded-xl';
+        statusEl.innerHTML = `<i class="fa-solid fa-circle-xmark text-red-600 mr-1"></i> Error al contactar al servidor: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1"></i><span>Enviar Mensaje de Prueba</span>';
+      }
     }
 
     async function iniciarCampanaWhatsApp() {
@@ -1384,9 +1816,446 @@
       });
     }
 
+    // ==========================================
+    // AUTO-PILOTO CONTINUO MULTI-TEMA
+    // ==========================================
+    let modoProspeccionActual = 'manual';
+    let autopilotoEstado = {
+      activo: false,
+      pausado: false,
+      faseActual: 'inactivo',
+      temaActual: '',
+      indiceTemaActual: 0,
+      totalTemas: 0,
+      temasRestantes: [],
+      enviadosHoy: 0,
+      topeDiario: 60,
+      totalEnviadosEnSesion: 0,
+      prospectosEncontradosTemaActual: 0,
+      tiempoRestantePausaSegundos: 0,
+      mensajeEstado: '',
+      historialTemas: []
+    };
+
+    function cambiarModoProspeccion(modo) {
+      modoProspeccionActual = modo;
+      const tabManual = document.getElementById('tabModoManual');
+      const tabAuto = document.getElementById('tabModoAuto');
+      const panelManual = document.getElementById('panelModoManual');
+      const panelAuto = document.getElementById('panelModoAuto');
+
+      const btnWaStart = document.getElementById('btnWaStart');
+      const waAutoAviso = document.getElementById('waAutoAviso');
+
+      if (modo === 'auto') {
+        tabAuto.className = 'px-4 py-2 text-xs font-bold rounded-lg transition-all bg-white text-purple-900 shadow-xs flex items-center space-x-1.5';
+        tabManual.className = 'px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-600 hover:text-slate-900 flex items-center space-x-1.5';
+        panelManual.classList.add('hidden');
+        panelAuto.classList.remove('hidden');
+        if (btnWaStart) btnWaStart.classList.add('hidden');
+        if (waAutoAviso) waAutoAviso.classList.remove('hidden');
+      } else {
+        tabManual.className = 'px-4 py-2 text-xs font-bold rounded-lg transition-all bg-white text-slate-900 shadow-xs flex items-center space-x-1.5';
+        tabAuto.className = 'px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-600 hover:text-slate-900 flex items-center space-x-1.5';
+        panelAuto.classList.add('hidden');
+        panelManual.classList.remove('hidden');
+        if (btnWaStart) btnWaStart.classList.remove('hidden');
+        if (waAutoAviso) waAutoAviso.classList.add('hidden');
+      }
+    }
+
+    function actualizarConteoTemas() {
+      const txt = document.getElementById('autopilotoTemasInput');
+      const lbl = document.getElementById('lblConteoTemas');
+      if (!txt || !lbl) return;
+      const lineas = txt.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      lbl.textContent = `${lineas.length} tema(s) ingresado(s)`;
+    }
+
+    function cargarPresetAutopiloto(tipo) {
+      const txt = document.getElementById('autopilotoTemasInput');
+      if (!txt) return;
+      if (tipo === 'oriente') {
+        txt.value = [
+          'ferreterias tena',
+          'bazares tena',
+          'farmacias tena',
+          'ferreterias puyo',
+          'bazares puyo',
+          'panaderias y pastelerias puyo'
+        ].join('\n');
+      } else if (tipo === 'sierra') {
+        txt.value = [
+          'tiendas de abarrotes riobamba',
+          'panaderias y pastelerias riobamba',
+          'ferreterias riobamba',
+          'tiendas de calzado ambato',
+          'ferreterias ambato',
+          'minimarkets ambato'
+        ].join('\n');
+      } else if (tipo === 'aleatorio') {
+        const copia = [...SUGERENCIAS_TIENDAS];
+        const elegidos = [];
+        for (let i = 0; i < 6 && copia.length > 0; i++) {
+          const idx = Math.floor(Math.random() * copia.length);
+          elegidos.push(copia.splice(idx, 1)[0].query);
+        }
+        txt.value = elegidos.join('\n');
+      }
+      actualizarConteoTemas();
+    }
+
+    function limpiarTemasAutopiloto() {
+      const txt = document.getElementById('autopilotoTemasInput');
+      if (txt) {
+        txt.value = '';
+        actualizarConteoTemas();
+      }
+    }
+
+    async function iniciarAutoPiloto() {
+      // 1. Validar primero que haya temas ingresados
+      const txt = document.getElementById('autopilotoTemasInput');
+      const temas = (txt ? txt.value : '')
+        .split('\n')
+        .map(t => t.trim())
+        .filter(t => t.length > 0);
+
+      if (temas.length === 0) {
+        alert('Por favor ingresa al menos un tema o búsqueda a prospectar (o pulsa un preset rápido).');
+        return;
+      }
+
+      // 2. Verificar estado en tiempo real de WhatsApp
+      const btnIniciar = document.getElementById('btnIniciarAutoPiloto');
+      const textoOriginal = btnIniciar.innerHTML;
+      btnIniciar.disabled = true;
+      btnIniciar.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i><span>Verificando WhatsApp...</span>';
+
+      try {
+        const resEstado = await fetch('/api/whatsapp/estado');
+        if (resEstado.ok) {
+          waEstado = await resEstado.json();
+        }
+      } catch {}
+
+      if (!waEstado.conectado) {
+        btnIniciar.disabled = false;
+        btnIniciar.innerHTML = textoOriginal;
+        abrirModalQr();
+        try {
+          await fetch('/api/whatsapp/conectar', { method: 'POST' });
+        } catch {}
+        return;
+      }
+
+
+      const pausaMin = parseInt(document.getElementById('autopilotoPausaMinutos')?.value || '5', 10);
+      const limite = parseInt(document.getElementById('autopilotoLimitePorTema')?.value || '20', 10);
+      const plantillasValidas = plantillasMensajes.map(t => t.trim()).filter(t => t.length > 0);
+      const rutasAdjuntos = archivosAdjuntos.map(a => a.rutaArchivo);
+      const tipoAdjunto = document.querySelector('input[name="tipoAdjuntoAuto"]:checked')?.value || document.querySelector('input[name="tipoAdjunto"]:checked')?.value || 'foto';
+
+      const soloWhatsapp = document.getElementById('chkSoloWhatsapp')?.checked !== false;
+      const excluirCadenas = document.getElementById('chkExcluirCadenas')?.checked !== false;
+      const solo2026 = document.getElementById('chkSolo2026')?.checked !== false;
+      const maturityMax = parseInt(document.getElementById('maturitySelect')?.value || '20', 10);
+
+      const confirmacion = confirm(
+        `¿Deseas arrancar el Auto-Piloto para ${temas.length} temas?\n\n` +
+        `• Tope diario: 60 mensajes\n` +
+        `• Pausa entre temas: ${pausaMin} minutos (anti-bloqueo)\n` +
+        `• Límite por tema: ${limite} PyMEs\n` +
+        `• Variaciones de mensaje: ${plantillasValidas.length}\n` +
+        `• Adjuntos: ${rutasAdjuntos.length} (${tipoAdjunto === 'foto' ? 'Foto normal' : 'Documento'})\n\n` +
+        `El sistema funcionará de forma continua y autónoma.`
+      );
+      if (!confirmacion) return;
+
+      const btn = document.getElementById('btnIniciarAutoPiloto');
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/autopiloto/iniciar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            temas,
+            limitePorTema: limite,
+            pausaMinutosEntreTemas: pausaMin,
+            soloConWhatsapp: soloWhatsapp,
+            excluirGrandesCadenas: excluirCadenas,
+            maxResenas: maturityMax,
+            soloNuevosOPequenos: true,
+            soloDel2026: solo2026,
+            plantillas: plantillasValidas,
+            archivosAdjuntosPaths: rutasAdjuntos,
+            tipoAdjunto: tipoAdjunto,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.exito) {
+          alert('No se pudo iniciar el Auto-Piloto: ' + (data.mensaje || 'Error desconocido'));
+        } else {
+          actualizarEstadoAutoPiloto();
+        }
+      } catch (err) {
+        alert('Error al conectar con Auto-Piloto: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function pausarAutoPiloto() {
+      try {
+        const res = await fetch('/api/autopiloto/pausar', { method: 'POST' });
+        const data = await res.json();
+        actualizarEstadoAutoPiloto();
+      } catch (err) {
+        alert('Error al pausar: ' + err.message);
+      }
+    }
+
+    async function reanudarAutoPiloto() {
+      try {
+        const res = await fetch('/api/autopiloto/reanudar', { method: 'POST' });
+        const data = await res.json();
+        actualizarEstadoAutoPiloto();
+      } catch (err) {
+        alert('Error al reanudar: ' + err.message);
+      }
+    }
+
+    async function detenerAutoPiloto() {
+      if (!confirm('¿Estás seguro de detener el Auto-Piloto por completo?')) return;
+      try {
+        const res = await fetch('/api/autopiloto/detener', { method: 'POST' });
+        const data = await res.json();
+        actualizarEstadoAutoPiloto();
+      } catch (err) {
+        alert('Error al detener: ' + err.message);
+      }
+    }
+
+    async function actualizarEstadoAutoPiloto() {
+      try {
+        const res = await fetch('/api/autopiloto/estado');
+        if (!res.ok) return;
+        autopilotoEstado = await res.json();
+        renderizarEstadoAutoPilotoUI();
+      } catch {}
+    }
+
+    function renderizarEstadoAutoPilotoUI() {
+      const monitor = document.getElementById('autopilotoMonitor');
+      const btnIniciar = document.getElementById('btnIniciarAutoPiloto');
+      const btnPausar = document.getElementById('btnPausarAutoPiloto');
+      const btnReanudar = document.getElementById('btnReanudarAutoPiloto');
+      const btnDetener = document.getElementById('btnDetenerAutoPiloto');
+      const badgeFase = document.getElementById('autoFaseBadge');
+      const colaBadge = document.getElementById('autoColaPendientes');
+
+      // Elementos Agente 1 (Scraper Maps)
+      const a1Badge = document.getElementById('agente1FaseBadge');
+      const a1Tema = document.getElementById('agente1TemaActual');
+      const a1Mensaje = document.getElementById('agente1Mensaje');
+      const a1CronoContainer = document.getElementById('agente1CronometroContainer');
+      const a1CronoTimer = document.getElementById('agente1CronometroTimer');
+      const a1Encolados = document.getElementById('agente1Encolados');
+      const a1Evaluados = document.getElementById('agente1Evaluados');
+
+      // Elementos Agente 2 (WhatsApp Mensajero)
+      const a2Badge = document.getElementById('agente2FaseBadge');
+      const a2Prospecto = document.getElementById('agente2ProspectoActual');
+      const a2Mensaje = document.getElementById('agente2Mensaje');
+      const a2CronoContainer = document.getElementById('agente2CronometroContainer');
+      const a2CronoTimer = document.getElementById('agente2CronometroTimer');
+      const a2EnviadosSesion = document.getElementById('agente2EnviadosSesion');
+      const a2MetaDiaria = document.getElementById('agente2MetaDiaria');
+
+      // Progreso general
+      const progresoTexto = document.getElementById('autoProgresoTexto');
+      const barraProgreso = document.getElementById('autoBarraProgreso');
+      const lblEnviadosHoy = document.getElementById('lblAutoPilotoEnviadosHoy');
+      const histContainer = document.getElementById('autoHistorialTemasContainer');
+      const histLista = document.getElementById('autoHistorialTemasLista');
+
+      if (!monitor) return;
+
+      const enviadosHoy = autopilotoEstado.agenteWhatsApp?.enviadosHoy || 0;
+      const topeDiario = autopilotoEstado.agenteWhatsApp?.topeDiario || 60;
+
+      if (lblEnviadosHoy) lblEnviadosHoy.textContent = enviadosHoy;
+
+      if (!autopilotoEstado.activo && autopilotoEstado.faseGlobal !== 'completado') {
+        monitor.classList.add('hidden');
+        btnIniciar.classList.remove('hidden');
+        btnPausar.classList.add('hidden');
+        btnReanudar.classList.add('hidden');
+        btnDetener.classList.add('hidden');
+        return;
+      }
+
+      monitor.classList.remove('hidden');
+
+      // Botones de control
+      if (autopilotoEstado.pausado) {
+        btnIniciar.classList.add('hidden');
+        btnPausar.classList.add('hidden');
+        btnReanudar.classList.remove('hidden');
+        btnDetener.classList.remove('hidden');
+      } else if (autopilotoEstado.activo) {
+        btnIniciar.classList.add('hidden');
+        btnPausar.classList.remove('hidden');
+        btnReanudar.classList.add('hidden');
+        btnDetener.classList.remove('hidden');
+      } else {
+        btnIniciar.classList.remove('hidden');
+        btnPausar.classList.add('hidden');
+        btnReanudar.classList.add('hidden');
+        btnDetener.classList.add('hidden');
+      }
+
+      // Insignia global de estado
+      if (badgeFase) {
+        if (autopilotoEstado.pausado) {
+          badgeFase.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+          badgeFase.innerHTML = '⏸️ Pausado';
+        } else if (autopilotoEstado.activo) {
+          badgeFase.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30';
+          badgeFase.innerHTML = '🔄 2 Agentes en Loop Concurrente';
+        } else if (autopilotoEstado.faseGlobal === 'completado') {
+          badgeFase.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          badgeFase.innerHTML = '✅ Prospección Completada';
+        }
+      }
+
+      // Cola de espera en tiempo real
+      if (colaBadge) {
+        colaBadge.textContent = autopilotoEstado.colaPendientes || 0;
+      }
+
+      // Renderizar Agente 1 (Scraper Maps)
+      const a1 = autopilotoEstado.agenteScraper;
+      if (a1) {
+        if (a1Tema) {
+          a1Tema.textContent = a1.temaActual
+            ? `Tema ${a1.indiceTemaActual}/${a1.totalTemas}: "${a1.temaActual}"`
+            : 'Tema: En espera';
+        }
+        if (a1Mensaje) a1Mensaje.textContent = a1.mensaje || '';
+        if (a1Encolados) a1Encolados.textContent = a1.prospectosEncoladosTotal || 0;
+        if (a1Evaluados) a1Evaluados.textContent = a1.prospectosEncontradosTotal || 0;
+
+        if (a1Badge) {
+          if (autopilotoEstado.pausado) {
+            a1Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+            a1Badge.innerHTML = '⏸️ Pausado';
+          } else if (a1.fase === 'escrapeando') {
+            a1Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30 animate-pulse';
+            a1Badge.innerHTML = '🔍 Escrapeando Maps';
+          } else if (a1.fase === 'pausa_enfriamiento') {
+            a1Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+            a1Badge.innerHTML = '⏳ Enfriamiento 5 min';
+          } else if (a1.fase === 'completado') {
+            a1Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+            a1Badge.innerHTML = '✅ Temas Listos';
+          } else {
+            a1Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-700 text-slate-300';
+            a1Badge.innerHTML = 'En espera';
+          }
+        }
+
+        if (a1CronoContainer && a1CronoTimer) {
+          if (a1.fase === 'pausa_enfriamiento' && a1.tiempoRestantePausaSegundos > 0) {
+            a1CronoContainer.classList.remove('hidden');
+            const m = Math.floor(a1.tiempoRestantePausaSegundos / 60);
+            const s = a1.tiempoRestantePausaSegundos % 60;
+            a1CronoTimer.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+          } else {
+            a1CronoContainer.classList.add('hidden');
+          }
+        }
+      }
+
+      // Renderizar Agente 2 (Mensajero WhatsApp)
+      const a2 = autopilotoEstado.agenteWhatsApp;
+      if (a2) {
+        if (a2Prospecto) {
+          a2Prospecto.textContent = a2.prospectoActual
+            ? `Destinatario: ${a2.prospectoActual}`
+            : 'Destinatario: Esperando turno';
+        }
+        if (a2Mensaje) a2Mensaje.textContent = a2.mensaje || '';
+        if (a2EnviadosSesion) a2EnviadosSesion.textContent = a2.enviadosEnSesion || 0;
+        if (a2MetaDiaria) a2MetaDiaria.textContent = `${a2.enviadosHoy || 0} / ${a2.topeDiario || 60}`;
+
+        if (a2Badge) {
+          if (autopilotoEstado.pausado) {
+            a2Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+            a2Badge.innerHTML = '⏸️ Pausado';
+          } else if (a2.fase === 'enviando') {
+            a2Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 animate-pulse';
+            a2Badge.innerHTML = '💬 Despachando';
+          } else if (a2.fase === 'pausa_humana') {
+            a2Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+            a2Badge.innerHTML = '⏳ Pausa Humana';
+          } else if (a2.fase === 'esperando_cola') {
+            a2Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-700 text-slate-300';
+            a2Badge.innerHTML = '💤 Esperando cola';
+          } else if (a2.fase === 'completado') {
+            a2Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+            a2Badge.innerHTML = '✅ Meta Alcanzada';
+          } else {
+            a2Badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-700 text-slate-300';
+            a2Badge.innerHTML = 'En espera';
+          }
+        }
+
+        if (a2CronoContainer && a2CronoTimer) {
+          if (a2.fase === 'pausa_humana' && a2.tiempoSiguienteSegundos > 0) {
+            a2CronoContainer.classList.remove('hidden');
+            a2CronoTimer.textContent = `${a2.tiempoSiguienteSegundos}s`;
+          } else {
+            a2CronoContainer.classList.add('hidden');
+          }
+        }
+      }
+
+      // Progreso hacia 60
+      const pct = Math.min(100, Math.round((enviadosHoy / topeDiario) * 100));
+      if (barraProgreso) barraProgreso.style.width = `${pct}%`;
+      if (progresoTexto) {
+        progresoTexto.textContent = `${enviadosHoy} / ${topeDiario} mensajes enviados hoy (${pct}%)`;
+      }
+
+      // Historial de temas completados
+      if (histContainer && histLista) {
+        const hist = autopilotoEstado.historialTemas || [];
+        if (hist.length > 0) {
+          histContainer.classList.remove('hidden');
+          histLista.innerHTML = '';
+          hist.forEach(h => {
+            const row = document.createElement('div');
+            row.className = 'py-1 flex items-center justify-between text-[11px] text-slate-300';
+            row.innerHTML = `
+              <span>${escapeHtml(h.tema)}</span>
+              <span class="text-blue-400 font-bold">${h.nuevos} encolados <span class="text-slate-500 font-normal">(${h.encontrados} encontrados)</span></span>
+            `;
+            histLista.appendChild(row);
+          });
+        } else {
+          histContainer.classList.add('hidden');
+        }
+      }
+    }
+
     // Iniciar sondeo de estado, preview, sugerencias y plantillas al cargar
     actualizarEstadoWhatsApp();
     setInterval(actualizarEstadoWhatsApp, 2500);
+    actualizarEstadoAutoPiloto();
+    setInterval(actualizarEstadoAutoPiloto, 2000);
     renderizarSugerencias();
     renderizarContenedorPlantillas();
   </script>
@@ -1407,9 +2276,10 @@
 
       <!-- Contenedor del QR -->
       <div class="my-4 p-3 bg-slate-50 rounded-2xl border border-slate-200 inline-block">
-        <div id="qrLoadingSpinner" class="w-56 h-56 flex flex-col items-center justify-center text-slate-400 text-xs">
-          <i class="fa-solid fa-circle-notch fa-spin text-3xl text-emerald-600 mb-2"></i>
-          <span>Cargando código QR de WhatsApp Web...</span>
+        <div id="qrLoadingSpinner" class="w-56 h-56 flex flex-col items-center justify-center text-slate-500 text-xs px-2 text-center">
+          <i class="fa-solid fa-circle-notch fa-spin text-3xl text-emerald-600 mb-3"></i>
+          <span id="lblQrMensajeEstado" class="font-medium text-slate-700">Iniciando WhatsApp Web...</span>
+          <span class="text-[10px] text-slate-400 mt-2 leading-tight">Si ya vinculaste tu cuenta antes, se conectará solo en unos segundos sin pedir QR.</span>
         </div>
         <img id="imgQrCode" src="" alt="Código QR WhatsApp" class="w-56 h-56 object-contain rounded-xl hidden" />
       </div>

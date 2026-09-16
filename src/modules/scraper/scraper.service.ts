@@ -175,7 +175,7 @@ export class ScraperService {
       }
 
       // 4. Scroll progresivo: cargamos suficientes tarjetas para compensar los descartes
-      const tarjetasObjetivo = Math.min(Math.max(limite * 3, 30), 120);
+      const tarjetasObjetivo = Math.min(Math.max(limite * 3, 30), 200);
       this.logger.log(
         `Cargando lista de negocios con desplazamiento progresivo (Buscando ~${tarjetasObjetivo} candidatos)...`,
       );

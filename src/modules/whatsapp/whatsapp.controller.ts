@@ -7,6 +7,7 @@ import {
   UploadedFile,
   UploadedFiles,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -25,6 +26,27 @@ const storageConfig = diskStorage({
     cb(null, `${Date.now()}_${base}${ext}`);
   },
 });
+
+import { IsString, IsNotEmpty, IsOptional, IsArray, IsIn } from 'class-validator';
+
+export class EnviarPruebaDto {
+  @IsString()
+  @IsNotEmpty()
+  telefono!: string;
+
+  @IsOptional()
+  @IsString()
+  mensaje?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  archivosAdjuntosPaths?: string[];
+
+  @IsOptional()
+  @IsIn(['foto', 'documento'])
+  tipoAdjunto?: 'foto' | 'documento';
+}
 
 @Controller('api/whatsapp')
 export class WhatsappController {
@@ -115,5 +137,19 @@ export class WhatsappController {
       throw new BadRequestException('Debes enviar una lista de números telefónicos.');
     }
     return this.whatsappService.importarContactados(telefonos);
+  }
+
+  @Post('enviar-prueba')
+  async enviarPrueba(@Body() dto: EnviarPruebaDto) {
+    return this.whatsappService.enviarMensajePrueba(dto.telefono, {
+      mensaje: dto.mensaje,
+      archivosAdjuntosPaths: dto.archivosAdjuntosPaths,
+      tipoAdjunto: dto.tipoAdjunto,
+    });
+  }
+
+  @Get('debug-adjuntos')
+  async debugAdjuntos(@Query('telefono') telefono?: string) {
+    return this.whatsappService.debugAdjuntos(telefono);
   }
 }
